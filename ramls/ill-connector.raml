@@ -37,6 +37,15 @@ resourceTypes:
   /prices:
     get:
       displayName: Retrieve a list of available prices
+  /request:
+      post:
+        description: Create a new interlibrary loan request with the supplying agency
+        body:
+          application/json:
+            example:
+              strict: false
+              value: !include mod-ill-ramls/examples/request_post.json
+            type: request
   /request/{requestId}:
       displayName: Interlibrary loan request
       uriParameters:
@@ -50,8 +59,6 @@ resourceTypes:
       is: [validate]
       get:
         description: Retrieve an interlibrary loan request from a supplying agency
-      post:
-        description: Create a new interlibrary loan request with the supplying agency
       put:
         description: Update an interlibary loan request with the supplying agency
         body:

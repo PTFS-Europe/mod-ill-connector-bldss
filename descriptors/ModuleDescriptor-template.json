@@ -41,14 +41,14 @@
           "permissionsRequired": ["${artifactId}.prices.collection.get"]
         },
         {
+          "methods": ["POST"],
+          "pathPattern": "/ill-connector/request",
+          "permissionsRequired": ["${artifactId}.request.item.post"]
+        },
+        {
           "methods": ["GET"],
           "pathPattern": "/ill-connector/request/{requestId}",
           "permissionsRequired": ["${artifactId}.request.item.get"]
-        },
-        {
-          "methods": ["POST"],
-          "pathPattern": "/ill-connector/request/{requestId}",
-          "permissionsRequired": ["${artifactId}.request.item.post"]
         },
         {
           "methods": ["PUT"],
