@@ -1,0 +1,166 @@
+{
+  "id": "${artifactId}-${version}",
+  "name": "Interlibrary Request Connector",
+  "provides": [
+    {
+      "id": "_tenant",
+      "version": "2.0",
+      "interfaceType": "system",
+      "handlers": [
+        {
+          "methods": ["POST"],
+          "pathPattern": "/_/tenant",
+          "modulePermissions": [
+            "pubsub.event-types.post",
+            "pubsub.publishers.post",
+            "pubsub.subscribers.post"
+          ]
+        }, {
+          "methods": ["GET", "DELETE"],
+          "pathPattern": "/_/tenant/{id}"
+        }
+      ]
+    },
+    {
+      "id": "${artifactId}",
+      "version": "0.1",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/search",
+          "permissionsRequired": ["${artifactId}.search.collection.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/services",
+          "permissionsRequired": ["${artifactId}.services.collection.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/prices",
+          "permissionsRequired": ["${artifactId}.prices.collection.get"]
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/request/{requestId}",
+          "permissionsRequired": ["${artifactId}.request.item.get"]
+        },
+        {
+          "methods": ["POST"],
+          "pathPattern": "/ill-connector/request/{requestId}",
+          "permissionsRequired": ["${artifactId}.request.item.post"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}",
+          "permissionsRequired": ["${artifactId}.request.item.put"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}/cancel",
+          "permissionsRequired": ["${artifactId}.request.item.cancel.put"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}/retry",
+          "permissionsRequired": ["${artifactId}.request.item.retry.put"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}/reminder",
+          "permissionsRequired": ["${artifactId}.request.item.reminder.put"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}/renew",
+          "permissionsRequired": ["${artifactId}.request.item.renew.put"]
+        },
+        {
+          "methods": ["PUT"],
+          "pathPattern": "/ill-connector/request/{requestId}/notify",
+          "permissionsRequired": ["${artifactId}.request.item.notify.put"]
+        }
+      ]
+    }
+  ],
+  "permissionSets": [
+    {
+      "permissionName": "${artifactId}.search.collection.get",
+      "displayName": "Interlibrary loan connector - perform search with supplier",
+      "description": "Perform search with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.services.collection.get",
+      "displayName": "Interlibrary loan connector - retrieve available services from supplier",
+      "description": "Get services collection from supplier"
+    },
+    {
+      "permissionName": "${artifactId}.prices.collection.get",
+      "displayName": "Interlibrary loan connector - retrieve available prices from supplier",
+      "description": "Get prices collection from supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.get",
+      "displayName": "Interlibrary loan connector - retrieve request details from supplier",
+      "description": "Get request details from supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.post",
+      "displayName": "Interlibrary loan connector - create new request with supplier",
+      "description": "Create new request with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.put",
+      "displayName": "Interlibrary loan connector - update request with supplier",
+      "description": "Update request with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.cancel.put",
+      "displayName": "Interlibrary loan connector - cancel request with supplier",
+      "description": "Cancel request with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.retry.put",
+      "displayName": "Interlibrary loan connector - retry request with supplier",
+      "description": "Retry request with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.reminder.put",
+      "displayName": "Interlibrary loan connector - send request reminder to supplier",
+      "description": "Send request reminder to supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.renew.put",
+      "displayName": "Interlibrary loan connector - renew request with supplier",
+      "description": "Renew request with supplier"
+    },
+    {
+      "permissionName": "${artifactId}.request.item.notify.put",
+      "displayName": "Interlibrary loan connector - send notification to supplier",
+      "description": "Send notification to supplier"
+    }
+  ],
+  "launchDescriptor": {
+    "dockerImage": "${artifactId}:${version}",
+    "dockerPull": false,
+    "dockerArgs": {
+      "HostConfig": {
+        "Memory": 357913941,
+        "PortBindings": { "8081/tcp": [ { "HostPort": "%p" } ] }
+      }
+    },
+    "env": [
+      { "name": "JAVA_OPTIONS",
+        "value": "-XX:MaxRAMPercentage=66.0"
+      },
+      { "name": "DB_HOST", "value": "postgres" },
+      { "name": "DB_PORT", "value": "5432" },
+      { "name": "DB_USERNAME", "value": "folio_admin" },
+      { "name": "DB_PASSWORD", "value": "folio_admin" },
+      { "name": "DB_DATABASE", "value": "okapi_modules" },
+      { "name": "DB_QUERYTIMEOUT", "value": "60000" },
+      { "name": "DB_CHARSET", "value": "UTF-8" },
+      { "name": "DB_MAXPOOLSIZE", "value": "5" }
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+#%RAML 1.0
+title: ILL Connector
+version: v0.1
+protocols: [ HTTP, HTTPS ]
+baseUri: http://localhost:9130
+
+documentation:
+  - title: Interlibrary Loan Connector
+    content: <b>API for interlibrary loan connector</b>
+
+types:
+  request:    !include mod-ill-ramls/schemas/request.json
+  requests:   !include mod-ill-ramls/schemas/requests.json
+  errors:     !include raml-util/schemas/errors.schema
+  parameters: !include raml-util/schemas/parameters.schema
+  UUID:
+    type: string
+    pattern: ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$
+
+traits:
+  language: !include raml-util/traits/language.raml
+  pageable: !include raml-util/traits/pageable.raml
+  searchable: !include raml-util/traits/searchable.raml
+  validate: !include raml-util/traits/validation.raml
+
+resourceTypes:
+  collection-item: !include raml-util/rtypes/item-collection.raml
+  get-only: !include raml-util/rtypes/get-only.raml
+
+/ill-connector:
+  /search:
+    get:
+      displayName: Perform a search on the supplying agency
+  /services:
+    get:
+      displayName: Retrieve a list of available services
+  /prices:
+    get:
+      displayName: Retrieve a list of available prices
+  /request/{requestId}:
+      displayName: Interlibrary loan request
+      uriParameters:
+        requestId:
+          description: The requesting agency's unique identifier for the request
+          type: string
+      type:
+        collection-item:
+          exampleItem: !include mod-ill-ramls/examples/request_get.json
+          schema: request
+      is: [validate]
+      get:
+        description: Retrieve an interlibrary loan request from a supplying agency
+      post:
+        description: Create a new interlibrary loan request with the supplying agency
+      put:
+        description: Update an interlibary loan request with the supplying agency
+        body:
+          application/json:
+            example:
+              strict: false
+              value: !include mod-ill-ramls/examples/request_post.json
+            type: request
+      /cancel:
+        put:
+          description: Request the cancellation of an interlibrary loan request with a supplying agency
+      /retry:
+        put:
+          description: Retry an interlibrary loan request with a supplying agency
+      /reminder:
+        put:
+          description: Send a reminder to a supplying agency regarding an interlibary loan request
+      /renew:
+        put:
+          description: Renew an interlibrary loan request with a supplying agency
+      /notify:
+        put:
+          description: Send an arbitrary message to a supplying agency
