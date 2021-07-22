@@ -1,0 +1,11 @@
+{
+  "success": {
+    "message": "A message relating to the success response",
+    "code": "A code relating to the success response"
+  },
+  "error": {
+    "message": "A message relating to the error response",
+    "code": "A code relating to the error response"
+  },
+  "entity": "{\"title\":\"The Empire Strikes Back\"}"
+}

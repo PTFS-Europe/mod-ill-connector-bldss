@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "Search result",
+  "description": "Represents a single ILL connector search result",
+  "properties": {
+    "id": {
+      "description": "A result id",
+      "type": "string"
+    },
+    "type": {
+      "description": "A result type",
+      "type": "string"
+    },
+    "available": {
+      "description": "Is the result available",
+      "type": "boolean"
+    },
+    "title": {
+      "description": "A result title",
+      "type": "string"
+    },
+    "author": {
+      "description": "A result author",
+      "type": "string"
+    },
+    "identifier": {
+      "description": "A result identifier",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "author"
+  ]
+}
