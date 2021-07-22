@@ -8,6 +8,7 @@ import org.folio.rest.jaxrs.model.ActionRequest;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
+import org.folio.util.CQLUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.ws.rs.core.Response;
@@ -26,7 +27,10 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
 
   @Override
   public void getIllConnectorSearch(int offset, int limit, String query, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    illSearchService.performSearch(query, offset, limit, vertxContext, okapiHeaders)
+    // Parse the query into XCQL before passing it to performSearch
+    CQLUtil parser = new CQLUtil();
+    String xcql = parser.parseToXCQL(query);
+    illSearchService.performSearch(xcql, offset, limit, vertxContext, okapiHeaders)
       .thenAccept(results -> asyncResultHandler.handle(succeededFuture(buildOkResponse(results))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }

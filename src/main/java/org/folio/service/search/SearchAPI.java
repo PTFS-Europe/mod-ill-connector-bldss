@@ -12,7 +12,8 @@ public class SearchAPI extends BaseService implements SearchService {
 
   @Override
   @Validate
-  public CompletableFuture<SearchResponse> performSearch(String query, int offset, int limit, Context context, Map<String, String> headers) {
+  public CompletableFuture<SearchResponse> performSearch(String xcql, int offset, int limit, Context context, Map<String, String> headers) {
+    System.out.println(xcql);
     CompletableFuture<SearchResponse> future = new CompletableFuture<>();
     future.complete(new SearchResponse());
     return future;
