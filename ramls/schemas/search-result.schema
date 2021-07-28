@@ -9,30 +9,26 @@
       "type": "string"
     },
     "type": {
-      "description": "A result type",
+      "description": "A result material type",
       "type": "string"
     },
     "available": {
       "description": "Is the result available",
       "type": "boolean"
     },
-    "title": {
-      "description": "A result title",
+    "abstract": {
+      "description": "An abstract for the result",
       "type": "string"
     },
-    "author": {
-      "description": "A result author",
-      "type": "string"
-    },
-    "identifier": {
-      "description": "A result identifier",
-      "type": "string"
+    "metadata": {
+      "description": "The result metadata",
+      "type": "object",
+      "$ref": "search-result-metadata.schema"
     }
   },
   "additionalProperties": false,
   "required": [
     "id",
-    "title",
-    "author"
+    "metadata"
   ]
 }

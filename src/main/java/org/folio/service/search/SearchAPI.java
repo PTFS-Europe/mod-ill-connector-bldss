@@ -19,7 +19,7 @@ public class SearchAPI extends BaseService implements SearchService {
   }
 
   @Override
-  public HttpRequest prepareRequest(Document search, String baseUrl, int offset, int limit) {
+  public HttpRequest prepareRequest(Document xcqlDoc, String url, int offset, int limit) {
     return null;
   }
 
