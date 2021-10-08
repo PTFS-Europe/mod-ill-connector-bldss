@@ -22,7 +22,7 @@ import static org.folio.config.Constants.BLDSS_TEST_API_URL;
 
 public class SearchAPI extends BaseService implements SearchService {
 
-  public static String baseUrl = BLDSS_TEST_API_URL + "/search/";
+  public static String baseUrl = BLDSS_TEST_API_URL + "/api/search/";
 
   @Override
   public CompletableFuture<SearchResponse> performSearch(Document xcqlDoc, int offset, int limit, Context context, Map<String, String> headers) {

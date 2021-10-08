@@ -7,10 +7,13 @@ import io.vertx.core.Vertx;
 import org.folio.exception.ConnectorQueryException;
 import org.folio.rest.jaxrs.model.ActionRequest;
 import org.folio.rest.jaxrs.resource.IllConnector;
+import org.folio.service.action.ActionService;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.CQLUtil;
 import org.folio.util.XMLUtil;
+import org.json.JSONObject;
+import org.json.XML;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 
@@ -23,6 +26,8 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
 
   @Autowired
   private SearchService illSearchService;
+  @Autowired
+  private ActionService illActionService;
 
   public ConnectorAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -44,7 +49,15 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   }
 
   @Override
-  public void putIllConnectorAction(ActionRequest entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void putIllConnectorAction(ActionRequest result, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    String submissionId = result.getEntityId();
+    String action = result.getActionName();
+    String payload = result.getActionPayload();
+    JSONObject json = new JSONObject(payload);
+    String xml = XML.toString(json);
+    illActionService.performAction(action, submissionId, xml, vertxContext, okapiHeaders)
+      .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
 
   }
 }

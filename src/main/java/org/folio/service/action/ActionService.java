@@ -2,6 +2,7 @@ package org.folio.service.action;
 
 import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.ActionResponse;
+import org.folio.util.BLDSSResponse;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -18,4 +19,13 @@ public interface ActionService {
    * @return response {@link ActionResponse}
    */
   CompletableFuture<ActionResponse> performAction(String actionName, String entityId, String payload, Context context, Map<String, String> headers);
+
+  /**
+   * This method receives an HttpResponse containing the supplier's API response
+   * and transforms it into an ActionResponse object
+   *
+   * @param response The supplier's response body
+   * @return An ActionResponse instance
+   */
+  ActionResponse prepareResponse(BLDSSResponse response);
 }
