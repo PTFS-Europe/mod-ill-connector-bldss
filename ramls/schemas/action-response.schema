@@ -7,22 +7,13 @@
     "success": {
       "description": "A payload representing a successful response",
       "type": "object",
-      "$ref": "action-response-payload.schema"
+      "$ref": "action-response-success.schema"
     },
     "error": {
       "description": "A payload representing an unsuccessful response",
       "type": "object",
-      "$ref": "action-response-payload.schema"
-    },
-    "entity": {
-      "description": "A representation of the entity operated on by the action",
-      "type": "string"
+      "$ref": "action-response-error.schema"
     }
   },
-  "additionalProperties": false,
-  "required": [
-    "success",
-    "error",
-    "entity"
-  ]
+  "additionalProperties": false
 }
