@@ -5,6 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.folio.exception.ConnectorQueryException;
+import org.folio.rest.jaxrs.model.ActionPayload;
 import org.folio.rest.jaxrs.model.ActionRequest;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
@@ -52,8 +53,8 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   public void putIllConnectorAction(ActionRequest result, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     String submissionId = result.getEntityId();
     String action = result.getActionName();
-    String payload = result.getActionPayload();
-    JSONObject json = new JSONObject(payload);
+    ActionPayload payload = result.getActionPayload();
+    JSONObject json = new JSONObject(payload.getAdditionalProperties());
     String xml = XML.toString(json);
     illActionService.performAction(action, submissionId, xml, vertxContext, okapiHeaders)
       .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))

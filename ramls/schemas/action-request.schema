@@ -14,7 +14,7 @@
     },
     "actionPayload": {
       "description": "An arbitrary payload relating to the entity being acted upon",
-      "type": "string"
+      "type": "object"
     }
   },
   "additionalProperties": false,
