@@ -1,6 +1,7 @@
 package org.folio.service.action;
 
 import io.vertx.core.Context;
+import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.util.BLDSSResponse;
 
@@ -12,13 +13,12 @@ public interface ActionService {
    * This method creates {@link ActionResponse}
    *
    * @param actionName Name of the action to be performed
-   * @param entityId The ID of the entity being actioned upon
-   * @param payload An arbitrary serialised payload relating to the entity
+   * @param payload An ActionMetadata object representing the ISO18626 metadata
    * @param context Vert.X context
    * @param headers OKAPI headers
    * @return response {@link ActionResponse}
    */
-  CompletableFuture<ActionResponse> performAction(String actionName, String entityId, String payload, Context context, Map<String, String> headers);
+  CompletableFuture<ActionResponse> performAction(String actionName, ActionMetadata payload, Context context, Map<String, String> headers);
 
   /**
    * This method receives an HttpResponse containing the supplier's API response
@@ -27,5 +27,5 @@ public interface ActionService {
    * @param response The supplier's response body
    * @return An ActionResponse instance
    */
-  ActionResponse prepareResponse(BLDSSResponse response);
+  ActionResponse prepareResponse(BLDSSResponse response, String entityId);
 }

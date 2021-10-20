@@ -8,8 +8,14 @@ import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.StringWriter;
 
 public class XMLUtil {
 
@@ -48,5 +54,19 @@ public class XMLUtil {
       e.printStackTrace();
     }
     return this.getDoc();
+  }
+
+  public String docAsString(Document doc) {
+    StringWriter writer = new StringWriter();
+    try {
+      DOMSource domSource = new DOMSource(doc);
+      StreamResult result = new StreamResult(writer);
+      TransformerFactory tf = TransformerFactory.newInstance();
+      Transformer transformer = tf.newTransformer();
+      transformer.transform(domSource, result);
+    } catch(TransformerException e) {
+      e.printStackTrace();
+    }
+    return writer.toString();
   }
 }

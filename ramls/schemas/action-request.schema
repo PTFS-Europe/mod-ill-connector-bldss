@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "Action request",
+  "description": "An action request",
+  "properties": {
+    "actionName": {
+      "description": "The name of the action being performed",
+      "type": "string"
+    },
+    "actionMetadata": {
+      "description": "The ISO18626 metadata relating to the action",
+      "type": "object",
+      "$ref": "action-request-metadata.schema"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["actionName","actionMetadata"]
+}

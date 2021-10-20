@@ -5,7 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import org.folio.exception.ConnectorQueryException;
-import org.folio.rest.jaxrs.model.ActionPayload;
+import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionRequest;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
@@ -13,8 +13,6 @@ import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.CQLUtil;
 import org.folio.util.XMLUtil;
-import org.json.JSONObject;
-import org.json.XML;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 
@@ -50,15 +48,16 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   }
 
   @Override
-  public void putIllConnectorAction(ActionRequest result, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    String submissionId = result.getEntityId();
-    String action = result.getActionName();
-    ActionPayload payload = result.getActionPayload();
-    JSONObject json = new JSONObject(payload.getAdditionalProperties());
-    String xml = XML.toString(json);
-    illActionService.performAction(action, submissionId, xml, vertxContext, okapiHeaders)
-      .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))
-      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
+  public void putIllConnectorAction(ActionRequest request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    String action = request.getActionName();
+    ActionMetadata payload = request.getActionMetadata();
+
+    // Determine what to do based on the action name
+    if (action.equals("submitRequest")) {
+      illActionService.performAction(action, payload, vertxContext, okapiHeaders)
+        .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))
+        .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
+    }
 
   }
 }

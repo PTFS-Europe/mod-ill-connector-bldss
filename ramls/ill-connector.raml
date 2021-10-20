@@ -10,8 +10,8 @@ documentation:
 
 types:
   errors:     !include raml-util/schemas/errors.schema
-  actionRequest: !include mod-ill-ramls/schemas/action-request.schema
-  actionResponse: !include mod-ill-ramls/schemas/action-response.schema
+  actionRequest: !include schemas/action-request.schema
+  actionResponse: !include mod-ill-ramls/schemas/sa-request/response/request-confirmation.schema
   searchResponse: !include schemas/search-response.schema
 
 traits:
@@ -44,7 +44,7 @@ traits:
         application/json:
           type: actionRequest
           examples:
-            ex: !include mod-ill-ramls/examples/action-request-payload.json
+            ex: !include examples/action-request.json
       responses:
         200:
           description: Returns success body for updated request
@@ -53,7 +53,7 @@ traits:
               type: actionResponse
               example:
                 strict: false
-                value: !include mod-ill-ramls/examples/action-response.json
+                value: !include mod-ill-ramls/examples/sa-request/response/request-confirmation.json
         201:
           description: Returns success body for created request
           body:
@@ -61,7 +61,7 @@ traits:
               type: actionResponse
               example:
                 strict: false
-                value: !include mod-ill-ramls/examples/action-response.json
+                value: !include mod-ill-ramls/examples/sa-request/response/request-confirmation.json
         500:
           description: Returns error body for failed action
           body:
@@ -69,4 +69,4 @@ traits:
               type: actionResponse
               example:
                 strict: false
-                value: !include mod-ill-ramls/examples/action-response.json
+                value: !include mod-ill-ramls/examples/sa-request/response/request-confirmation.json

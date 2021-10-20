@@ -1,0 +1,82 @@
+{
+  "Header": {
+    "SupplyingAgencyId": {
+      "AgencyIdType": "ISIL",
+      "AgencyIdValue": "GB-Uk"
+    },
+    "RequestingAgencyId": {
+      "AgencyIdType": "ISIL",
+      "AgencyIdValue": "GB-WlAbUt"
+    },
+    "Timestamp": "2021-10-19T15:54:23Z",
+    "RequestingAgencyRequestId": "1"
+  },
+  "BibliographicInfo": {
+    "Title": "Journal of paediatrics and child health",
+    "TitleOfComponent": "Peer review of rural and tertiary Queensland paediatric diabetes services: A pilot project from the National Health Service",
+    "AuthorOfComponent": "Wales, Jerry",
+    "Volume": "55",
+    "PagesRequested": "701-706",
+    "BibliographicItemId": {
+      "BibliographicItemIdentifierCode": "ISSN",
+      "BibliographicItemIdentifier": "1034-4810"
+    }
+  },
+  "PublicationInfo": {
+    "Publisher": "Blackwell Science",
+    "PublicationType": "Article",
+    "PublicationDate": "2019"
+  },
+  "ServiceInfo": {
+    "RequestType": "New",
+    "ServiceType": "Copy",
+    "ServiceLevel": "Normal",
+    "CopyrightCompliance": "UK-CopyRFeePaid"
+  },
+  "RequestedDeliveryInfo": {
+    "SortOrder": "1",
+    "Address": {
+      "ElectronicAddress": {
+        "ElectronicAddressType": "Email",
+        "ElectronicAddressData": "requester@requestingagency.com"
+      }
+    }
+  },
+  "RequestingAgencyInfo": {
+    "Name": "Fiction University",
+    "ContactName": "Mr ILL Librarian",
+    "Address": {
+      "ElectronicAddress": {
+        "ElectronicAddressType": "Email",
+        "ElectronicAddressData": "illlibrarian@requestingagency.com"
+      }
+    }
+  },
+  "PatronInfo": {
+    "PatronId": "0bd35e60-a5b5-40c9-9b15-3caa8d7d66c3",
+    "Surname": "McPatron",
+    "GivenName": "Pat",
+    "PatronType": "Adult",
+    "Address": {
+      "ElectronicAddress": {
+        "ElectronicAddressType": "Email",
+        "ElectronicAddressData": "pat@mcpatron.com"
+      }
+    }
+  },
+  "BillingInfo": {
+    "PaymentMethod": "BankTransfer",
+    "MaximumCosts": {
+      "CurrencyCode": "GBP",
+      "MonetaryValue": "20"
+    },
+    "BillingMethod": "Account",
+    "BillingName": "Jeff Finance",
+    "Address": {
+      "ElectronicAddress": {
+        "ElectronicAddressType": "Email",
+        "ElectronicAddressData": "jeff@requestingagency.com"
+      }
+    }
+  }
+}

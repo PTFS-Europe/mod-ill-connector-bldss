@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "Action request metadata",
+  "description": "A payload based on ISO18626 describing an action request's metadata",
+  "properties": {
+    "Header": {
+      "description": "Administrative information about the request",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/request-header.schema"
+    },
+    "BibliographicInfo": {
+      "description": "Bibliographic information about the requested item",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/bibliographic-info.schema"
+    },
+    "PublicationInfo": {
+      "description": "Information about the publication",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/publication-info.schema"
+    },
+    "ServiceInfo": {
+      "description": "Information about the requested service",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/service-info.schema"
+    },
+    "SupplierInfo": {
+      "description": "When a request is sent to a brokering institution, the requesting library may provide a list of potential suppliers (in preference order) intended primarily for requests sent to brokers, but may be used in other circumstances as well.",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/supplier-info.schema"
+    },
+    "RequestedDeliveryInfo": {
+      "description": "A prioritized list of suggested delivery methods, each with its own delivery address",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/requested-delivery-info.schema"
+    },
+    "RequestingAgencyInfo": {
+      "description": "Details of the requesting agency",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/requesting-agency-info.schema"
+    },
+    "PatronInfo": {
+      "description": "Details of the patron for whom the request is being made.",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/patron-info.schema"
+    },
+    "BillingInfo": {
+      "description": "Information about how the requesting agency expects to be billed for and pay for the item",
+      "type": "object",
+      "$ref": "../mod-ill-ramls/schemas/ISO18626/billing-info.schema"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["Header","BibliographicInfo", "ServiceInfo"]
+}
