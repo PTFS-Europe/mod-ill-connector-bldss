@@ -3,8 +3,9 @@ package org.folio.service.action;
 import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionResponse;
-import org.folio.util.BLDSSResponse;
+import org.folio.util.BLDSSRequest;
 
+import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,5 +28,5 @@ public interface ActionService {
    * @param response The supplier's response body
    * @return An ActionResponse instance
    */
-  ActionResponse prepareResponse(BLDSSResponse response, String entityId);
+  ActionResponse prepareResponse(HttpResponse<String> response, BLDSSRequest request);
 }

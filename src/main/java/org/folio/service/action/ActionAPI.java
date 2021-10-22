@@ -5,10 +5,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionResponse;
+import org.folio.rest.jaxrs.model.ConfirmationHeader;
 import org.folio.rest.jaxrs.model.Header;
 import org.folio.util.BLDSSRequest;
-import org.folio.util.BLDSSResponse;
+import org.folio.util.XMLUtil;
+import org.w3c.dom.Document;
 
+import java.net.http.HttpResponse;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,8 +32,7 @@ public class ActionAPI implements ActionService {
     BLDSSRequest req = new BLDSSRequest("POST", path, params);
     req.setPayload(payload);
     req.makeRequest().thenApply(respObj -> {
-      String entityId = payload.getHeader().getRequestingAgencyRequestId();
-      ActionResponse actionResponse = prepareResponse(respObj, entityId);
+      ActionResponse actionResponse = prepareResponse(respObj, req);
       future.complete(actionResponse);
       return actionResponse;
     });
@@ -36,23 +41,46 @@ public class ActionAPI implements ActionService {
   }
 
   @Override
-  public ActionResponse prepareResponse(BLDSSResponse response, String localRequestId) {
+  public ActionResponse prepareResponse(HttpResponse<String> response, BLDSSRequest request) {
+    XMLUtil xmlUtil = new XMLUtil();
+
     ActionResponse actionResponse = new ActionResponse();
-    String status = response.getStatus();
-    // We have an error
-    if (!status.equals("0")) {
-      Header errorHeader = new Header()
-        .withErrorData(Header.ErrorData.BADLY_FORMED_MESSAGE);
-      actionResponse.setHeader(errorHeader);
-    } else {
-      Date now = new Date();
-      Header header = new Header()
-        .withTimestamp(now)
-        .withTimestampReceived(now)
-        .withMessageStatus(Header.MessageStatus.OK);
-      actionResponse.setHeader(header);
+    Document bodyDoc = xmlUtil.parse(response.body());
+
+    Header requestHeader = request.getActionPayload().getHeader();
+
+    String received = xmlUtil.getNode(bodyDoc, "timestamp").getTextContent();
+    DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.SS z");
+    Date parsedReceived = new Date();
+    try {
+      parsedReceived = dateFormat.parse(received);
+    } catch (ParseException e) {
+      e.printStackTrace();
     }
 
+    String statusString = xmlUtil.getNode(bodyDoc, "status").getTextContent();
+
+    ConfirmationHeader.MessageStatus messageStatus = statusString.equals("0") ?
+      ConfirmationHeader.MessageStatus.OK :
+      ConfirmationHeader.MessageStatus.ERROR;
+
+    // Build most of our ConfirmationHeader
+    Date now = new Date(System.currentTimeMillis());
+    ConfirmationHeader confirmationHeader = new ConfirmationHeader()
+      .withSupplyingAgencyId(requestHeader.getSupplyingAgencyId())
+      .withRequestingAgencyId(requestHeader.getRequestingAgencyId())
+      .withTimestamp(now)
+      .withRequestingAgencyRequestId(requestHeader.getRequestingAgencyRequestId())
+      .withTimestampReceived(parsedReceived)
+      .withMessageStatus(messageStatus);
+
+    // We have an error
+    if (!statusString.equals("0")) {
+      String blError = xmlUtil.getNode(bodyDoc, "message").getTextContent();
+      confirmationHeader.setErrorData(blError);
+    }
+
+    actionResponse.setHeader(confirmationHeader);
     return actionResponse;
   }
 
