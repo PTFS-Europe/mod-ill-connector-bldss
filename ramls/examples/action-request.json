@@ -35,15 +35,15 @@
       "ServiceLevel": "Normal",
       "CopyrightCompliance": "UK-CopyRFeePaid"
     },
-    "RequestedDeliveryInfo": {
+    "RequestedDeliveryInfo": [{
       "SortOrder": "1",
-      "Address": [{
+      "Address": {
         "ElectronicAddress": {
           "ElectronicAddressType": "Email",
           "ElectronicAddressData": "requester@requestingagency.com"
         }
-      }]
-    },
+      }
+    }],
     "RequestingAgencyInfo": {
       "Name": "Fiction University",
       "ContactName": "Mr ILL Librarian",

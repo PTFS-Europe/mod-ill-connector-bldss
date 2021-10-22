@@ -26,13 +26,19 @@
     },
     "SupplierInfo": {
       "description": "When a request is sent to a brokering institution, the requesting library may provide a list of potential suppliers (in preference order) intended primarily for requests sent to brokers, but may be used in other circumstances as well.",
-      "type": "object",
-      "$ref": "../mod-ill-ramls/schemas/ISO18626/supplier-info.schema"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "../mod-ill-ramls/schemas/ISO18626/supplier-info.schema"
+      }
     },
     "RequestedDeliveryInfo": {
       "description": "A prioritized list of suggested delivery methods, each with its own delivery address",
-      "type": "object",
-      "$ref": "../mod-ill-ramls/schemas/ISO18626/requested-delivery-info.schema"
+      "type": "array",
+      "items": {
+        "type": "object",
+        "$ref": "../mod-ill-ramls/schemas/ISO18626/requested-delivery-info.schema"
+      }
     },
     "RequestingAgencyInfo": {
       "description": "Details of the requesting agency",
