@@ -48,7 +48,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   }
 
   @Override
-  public void putIllConnectorAction(ActionRequest request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+  public void postIllConnectorAction(ActionRequest request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     String action = request.getActionName();
     ActionMetadata payload = request.getActionMetadata();
 
