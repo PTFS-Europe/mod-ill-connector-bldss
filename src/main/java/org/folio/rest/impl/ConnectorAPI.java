@@ -7,11 +7,13 @@ import io.vertx.core.Vertx;
 import org.folio.exception.ConnectorQueryException;
 import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionRequest;
+import org.folio.rest.jaxrs.model.SupplyingAgencyMessage;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.CQLUtil;
+import org.folio.util.SupplyingAgency;
 import org.folio.util.XMLUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
@@ -58,6 +60,14 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
         .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
     }
-
   }
+
+  @Override
+  public void postIllConnectorSaUpdate(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+
+    SupplyingAgencyMessage sam = new SupplyingAgency().buildMessage(entity);
+
+    asyncResultHandler.handle(succeededFuture(buildOkResponse(sam)));
+  }
+
 }

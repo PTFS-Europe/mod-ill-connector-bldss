@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.folio.config.Constants.BLDSS_TEST_API_URL;
+import static org.folio.config.Constants.CALLBACK_URL;
 
 public class BLDSSRequest {
 
@@ -225,7 +226,7 @@ public class BLDSSRequest {
     return itemOfInterestLevel;
   }
 
-  // Given a list of RequestedDelieryInfo objects, use the first of each type
+  // Given a list of RequestedDeliveryInfo objects, use the first of each type
   // to construct our "Delivery" element
   private Node getRequestedDelivery(Document doc) {
     List<RequestedDeliveryInfo> deliveryInfos = this.actionPayload.getRequestedDeliveryInfo();
@@ -236,6 +237,11 @@ public class BLDSSRequest {
     Element delivery = doc.createElement("Delivery");
     int physicalPopulated = 0;
     int electronicPopulated = 0;
+
+    // Add our callback URL
+    Element callbackUrl = doc.createElement("callbackUrl");
+    callbackUrl.setTextContent(CALLBACK_URL);
+    delivery.appendChild(callbackUrl);
 
     for (RequestedDeliveryInfo deliveryInfo : deliveryInfos) {
       // We have to infer the address type from the properties contained therein,

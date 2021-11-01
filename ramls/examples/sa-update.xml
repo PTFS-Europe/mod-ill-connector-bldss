@@ -1,0 +1,6 @@
+<orderline id="00001234-001">
+  <event time="2012-08-07 12:32:31.0">
+    <eventType id="9">Order confirmed</eventType>
+    <additionalInfo>Estimated despatch date: 08-08-2012</additionalInfo>
+  </event>
+</orderline>

@@ -128,6 +128,12 @@
       <version>${folio-di-support.version}</version>
       <type>jar</type>
     </dependency>
+      <dependency>
+          <groupId>org.jetbrains</groupId>
+          <artifactId>annotations</artifactId>
+          <version>RELEASE</version>
+          <scope>compile</scope>
+      </dependency>
   </dependencies>
 
   <dependencyManagement>
@@ -429,6 +435,32 @@
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
         </configuration>
+      </plugin>
+
+      <!-- Generate classes for schemas that do not appear in the API spec -->
+      <plugin>
+        <groupId>org.jsonschema2pojo</groupId>
+        <artifactId>jsonschema2pojo-maven-plugin</artifactId>
+        <version>1.0.2</version>
+        <configuration>
+          <includes>
+            <include>supplying-agency-message.schema</include>
+          </includes>
+          <excludes>
+            <exclude>physical-address.schema</exclude>
+          </excludes>
+          <sourceDirectory>${basedir}/ramls/mod-ill-ramls/schemas/ISO18626/</sourceDirectory>
+          <outputDirectory>${project.build.directory}/generated-sources/raml-jaxrs</outputDirectory>
+          <targetPackage>org.folio.rest.jaxrs.model</targetPackage>
+          <generateBuilders>true</generateBuilders>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
 
