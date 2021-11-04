@@ -8,7 +8,7 @@ import io.vertx.core.json.JsonObject;
 import org.folio.exception.ConnectorQueryException;
 import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionRequest;
-import org.folio.rest.jaxrs.model.SupplyingAgencyMessage;
+import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
 import org.folio.service.search.SearchService;
