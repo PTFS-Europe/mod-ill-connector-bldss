@@ -1,20 +1,23 @@
 package org.folio.util;
 
+import io.vertx.core.json.JsonObject;
 import org.folio.rest.jaxrs.model.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.time.ZonedDateTime;
 import java.util.Map;
+import java.util.HashMap;
+import static org.folio.config.Constants.ISO18626_DATE_FORMAT;
 
 public class SupplyingAgency {
 
-  Map<String, SamMessageInfo.ReasonForMessage> reasonForMessageMap;
-  Map<String, SamMessageInfo.ReasonUnfilled> reasonUnfilledMap;
-  Map<String, SamMessageInfo.ReasonRetry> reasonRetryMap;
+  Map<String, SupplyingAgencyMessageInfo.ReasonForMessage> reasonForMessageMap;
+  Map<String, SupplyingAgencyMessageInfo.ReasonUnfilled> reasonUnfilledMap;
+  Map<String, SupplyingAgencyMessageInfo.ReasonRetry> reasonRetryMap;
   Map<String, SamStatusInfo.Status> statusMap;
   XMLUtil xmlUtil;
 
@@ -32,16 +35,16 @@ public class SupplyingAgency {
     Document doc = this.xmlUtil.parse(inboundMessage);
 
     // Header
-    SamHeader header = buildHeader(doc);
+    SupplyingAgencyMessageHeader header = buildMessageHeader(doc);
 
     // MessageInfo
-    SamMessageInfo messageInfo = buildMessageInfo(doc);
+    SupplyingAgencyMessageInfo messageInfo = buildMessageInfo(doc);
 
     // StatusInfo
-    SamStatusInfo statusInfo = buildStatusInfo(doc);
+    SamStatusInfo statusInfo = buildMessageStatusInfo(doc);
 
     // DeliveryInfo
-    SamDeliveryInfo deliveryInfo = buildDeliveryInfo(doc);
+    SamDeliveryInfo deliveryInfo = buildMessageDeliveryInfo(doc);
 
     SupplyingAgencyMessage sam = new SupplyingAgencyMessage();
 
@@ -62,7 +65,7 @@ public class SupplyingAgency {
     return sam;
   }
 
-  private SamHeader buildHeader(Document doc) {
+  private SupplyingAgencyMessageHeader buildMessageHeader(Document doc) {
     Element orderlineEl = (Element) this.xmlUtil.getNode(doc, "orderline");
     String requestId = orderlineEl.getAttribute("id");
 
@@ -74,20 +77,20 @@ public class SupplyingAgency {
       .withAgencyIdType(AgencyId.AgencyIdType.ISIL)
       .withAgencyIdValue("MY_REQUESTER_ID");
 
-    Date now = new Date(System.currentTimeMillis());
-
-    return new SamHeader()
+    Element event = (Element) this.xmlUtil.getNode(doc,"event");
+    String time = event.getAttribute("time");
+    return new SupplyingAgencyMessageHeader()
       .withSupplyingAgencyId(supplierId)
       .withRequestingAgencyId(requesterId)
-      .withTimestamp(now)
+      .withTimestamp(DateTimeUtils.bldssToIso(time))
       .withRequestingAgencyRequestId(requestId);
   }
 
-  private SamMessageInfo buildMessageInfo(Document doc) {
+  private SupplyingAgencyMessageInfo buildMessageInfo(Document doc) {
 
     String code = getEventCode(doc);
 
-    SamMessageInfo messageInfo = new SamMessageInfo()
+    SupplyingAgencyMessageInfo messageInfo = new SupplyingAgencyMessageInfo()
       .withReasonForMessage(this.reasonForMessageMap.get(code));
 
     // In case our mapping falls short, add everything into the note field
@@ -117,35 +120,27 @@ public class SupplyingAgency {
     return messageInfo;
   }
 
-  private SamStatusInfo buildStatusInfo(Document doc) {
+  private SamStatusInfo buildMessageStatusInfo(Document doc) {
 
     String code = getEventCode(doc);
 
     SamStatusInfo.Status status = this.statusMap.get(code);
 
-    Date now = new Date(System.currentTimeMillis());
-
     return new SamStatusInfo()
       .withStatus(status)
-      .withLastChange(now);
-
+      .withLastChange(DateTimeUtils.dtToString(ZonedDateTime.now(), ISO18626_DATE_FORMAT));
   }
 
-  private SamDeliveryInfo buildDeliveryInfo(Document doc) {
+  private SamDeliveryInfo buildMessageDeliveryInfo(Document doc) {
     String code = getEventCode(doc);
 
     // If we're receiving a message containing dispatch info
     Element additionalInfo = (Element) this.xmlUtil.getNode(doc, "additionalInfo");
     if (code.equals("12")) {
       if (additionalInfo.getTextContent().length() > 0) {
-        SimpleDateFormat bldssFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
-        try {
-          Date date = bldssFormat.parse(additionalInfo.getTextContent());
-          return new SamDeliveryInfo()
-            .withDateSent(date);
-        } catch(ParseException e) {
-          e.printStackTrace();
-        }
+        String date = DateTimeUtils.bldssToIso(additionalInfo.getTextContent());
+        return new SamDeliveryInfo()
+          .withDateSent(date);
       }
     } else if (code.equals("11")) {
       SamDeliveryInfo.SentVia sentVia = SamDeliveryInfo.SentVia.URL;
@@ -155,37 +150,66 @@ public class SupplyingAgency {
     return null;
   }
 
-  private Map<String, SamMessageInfo.ReasonRetry> bldssCodeToReasonRetry() {
-    return new HashMap<String, SamMessageInfo.ReasonRetry>() {{
-      put("18a", SamMessageInfo.ReasonRetry.NOT_FOUND_AS_CITED);
-      put("18b", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18c", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18d", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18e", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18f", SamMessageInfo.ReasonRetry.COST_EXCEEDS_MAX_COST);
-      put("18g", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18h", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18i", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18j", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("18k", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
-      put("21b", SamMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+  public String buildConfirmation(JsonObject isoConfirmation) {
+    try {
+      DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+      DocumentBuilder db = dbf.newDocumentBuilder();
+      Document doc = db.newDocument();
+      Element rootEl = doc.createElement("updateResponse");
+      doc.appendChild(rootEl);
+
+      String outDt = DateTimeUtils.isoToBldss(isoConfirmation.getJsonObject("Header").getString("Timestamp"));
+      Element timestamp = doc.createElement("timestamp");
+      timestamp.setTextContent(outDt);
+      rootEl.appendChild(timestamp);
+
+      Element status = doc.createElement("status");
+      status.setTextContent("0");
+      rootEl.appendChild(status);
+
+      Element message = doc.createElement("message");
+      rootEl.appendChild(message);
+
+      String out = this.xmlUtil.docAsString(doc, true);
+      return out;
+    } catch (ParserConfigurationException e) {
+      e.printStackTrace();
+    }
+    return null;
+  }
+
+
+  private Map<String, SupplyingAgencyMessageInfo.ReasonRetry> bldssCodeToReasonRetry() {
+    return new HashMap<String, SupplyingAgencyMessageInfo.ReasonRetry>() {{
+      put("18a", SupplyingAgencyMessageInfo.ReasonRetry.NOT_FOUND_AS_CITED);
+      put("18b", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18c", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18d", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18e", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18f", SupplyingAgencyMessageInfo.ReasonRetry.COST_EXCEEDS_MAX_COST);
+      put("18g", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18h", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18i", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18j", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("18k", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("21b", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
     }};
   }
 
-  private Map<String, SamMessageInfo.ReasonUnfilled> bldssCodeToReasonUnfulfilled() {
-    return new HashMap<String, SamMessageInfo.ReasonUnfilled>() {{
-      put("18a", SamMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
-      put("18b", SamMessageInfo.ReasonUnfilled.NOT_HELD);
-      put("18c", SamMessageInfo.ReasonUnfilled.NOT_ON_SHELF);
-      put("18d", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18e", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18f", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18g", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18h", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18i", SamMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
-      put("18j", SamMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
-      put("18k", SamMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
-      put("21b", SamMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
+  private Map<String, SupplyingAgencyMessageInfo.ReasonUnfilled> bldssCodeToReasonUnfulfilled() {
+    return new HashMap<String, SupplyingAgencyMessageInfo.ReasonUnfilled>() {{
+      put("18a", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
+      put("18b", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_HELD);
+      put("18c", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_ON_SHELF);
+      put("18d", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18e", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18f", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18g", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18h", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18i", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("18j", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
+      put("18k", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
+      put("21b", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
     }};
   }
 
@@ -195,67 +219,67 @@ public class SupplyingAgency {
   // https://apitest.bldss.bl.uk/docs/guide/appendix.html#orderlineUpdates
   // It's not clear from the BL docs what initiates some of these events, so
   // there's some best guesses here
-  private Map<String, SamMessageInfo.ReasonForMessage> bldssCodeToReasonForMessage() {
-    return new HashMap<String, SamMessageInfo.ReasonForMessage>() {{
-      put("1", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("10", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("11", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("12", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("12a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("13", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("14", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("15", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("16", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("17", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18b", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18c", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18d", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18e", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18f", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18g", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18h", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18i", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18j", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("18k", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("19", SamMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
-      put("1a", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("20b", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("20c", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("20d", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("21", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("21a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("21b", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("22a", SamMessageInfo.ReasonForMessage.RENEW_RESPONSE);
-      put("22b", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("23", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("24", SamMessageInfo.ReasonForMessage.RENEW_RESPONSE);
-      put("25", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("25a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("26", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("27", SamMessageInfo.ReasonForMessage.RENEW_RESPONSE);
-      put("28", SamMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
-      put("29", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("2a", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("2b", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("2c", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("2d", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("2e", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("2f", SamMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
-      put("3a", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("4", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("47", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("48", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("49", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("4a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("6", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("7a", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("7b", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("8", SamMessageInfo.ReasonForMessage.NOTIFICATION);
-      put("9a", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("9b", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("9c", SamMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
-      put("9d", SamMessageInfo.ReasonForMessage.NOTIFICATION);
+  private Map<String, SupplyingAgencyMessageInfo.ReasonForMessage> bldssCodeToReasonForMessage() {
+    return new HashMap<String, SupplyingAgencyMessageInfo.ReasonForMessage>() {{
+      put("1", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("10", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("11", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("12", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("12a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("13", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("14", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("15", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("16", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("17", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18b", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18c", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18d", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18e", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18f", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18g", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18h", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18i", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18j", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("18k", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("19", SupplyingAgencyMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
+      put("1a", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("20b", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("20c", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("20d", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("21", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("21a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("21b", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("22a", SupplyingAgencyMessageInfo.ReasonForMessage.RENEW_RESPONSE);
+      put("22b", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("23", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("24", SupplyingAgencyMessageInfo.ReasonForMessage.RENEW_RESPONSE);
+      put("25", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("25a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("26", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("27", SupplyingAgencyMessageInfo.ReasonForMessage.RENEW_RESPONSE);
+      put("28", SupplyingAgencyMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
+      put("29", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("2a", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("2b", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("2c", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("2d", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("2e", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("2f", SupplyingAgencyMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
+      put("3a", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("4", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("47", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("48", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("49", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("4a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("6", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("7a", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("7b", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("8", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
+      put("9a", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("9b", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("9c", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("9d", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
     }};
   }
 

@@ -61,13 +61,16 @@ public class XMLUtil {
     return this.getDoc();
   }
 
-  public String docAsString(Document doc) {
+  public String docAsString(Document doc, Boolean omitXmlDeclaration) {
     StringWriter writer = new StringWriter();
     try {
       DOMSource domSource = new DOMSource(doc);
       StreamResult result = new StreamResult(writer);
       TransformerFactory tf = TransformerFactory.newInstance();
       Transformer transformer = tf.newTransformer();
+      if (omitXmlDeclaration) {
+        transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+      }
       transformer.transform(domSource, result);
     } catch(TransformerException e) {
       e.printStackTrace();

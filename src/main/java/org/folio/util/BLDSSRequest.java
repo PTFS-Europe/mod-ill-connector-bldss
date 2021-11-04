@@ -103,7 +103,7 @@ public class BLDSSRequest {
       }
 
       XMLUtil xmlUtil = new XMLUtil();
-      this.payload = xmlUtil.docAsString(doc);
+      this.payload = xmlUtil.docAsString(doc, false);
     } catch (ParserConfigurationException e) {
       e.printStackTrace();
     }

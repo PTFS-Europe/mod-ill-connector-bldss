@@ -8,17 +8,16 @@ import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ConfirmationHeader;
 import org.folio.rest.jaxrs.model.Header;
 import org.folio.util.BLDSSRequest;
+import org.folio.util.DateTimeUtils;
 import org.folio.util.XMLUtil;
 import org.w3c.dom.Document;
 
 import java.net.http.HttpResponse;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import static org.folio.config.Constants.ISO18626_DATE_FORMAT;
 
 public class ActionAPI implements ActionService {
 
@@ -50,13 +49,7 @@ public class ActionAPI implements ActionService {
     Header requestHeader = request.getActionPayload().getHeader();
 
     String received = xmlUtil.getNode(bodyDoc, "timestamp").getTextContent();
-    DateFormat dateFormat = new SimpleDateFormat("YYYY-MM-dd HH:mm:ss.SS z");
-    Date parsedReceived = new Date();
-    try {
-      parsedReceived = dateFormat.parse(received);
-    } catch (ParseException e) {
-      e.printStackTrace();
-    }
+    String timestampReceived = DateTimeUtils.bldssToIso(received);
 
     String statusString = xmlUtil.getNode(bodyDoc, "status").getTextContent();
 
@@ -65,13 +58,12 @@ public class ActionAPI implements ActionService {
       ConfirmationHeader.MessageStatus.ERROR;
 
     // Build most of our ConfirmationHeader
-    Date now = new Date(System.currentTimeMillis());
     ConfirmationHeader confirmationHeader = new ConfirmationHeader()
       .withSupplyingAgencyId(requestHeader.getSupplyingAgencyId())
       .withRequestingAgencyId(requestHeader.getRequestingAgencyId())
-      .withTimestamp(now)
+      .withTimestamp(DateTimeUtils.dtToString(ZonedDateTime.now(), ISO18626_DATE_FORMAT))
       .withRequestingAgencyRequestId(requestHeader.getRequestingAgencyRequestId())
-      .withTimestampReceived(parsedReceived)
+      .withTimestampReceived(timestampReceived)
       .withMessageStatus(messageStatus);
 
     // We have an error
