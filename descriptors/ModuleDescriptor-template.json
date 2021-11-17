@@ -37,7 +37,8 @@
         },
         {
           "methods": ["POST"],
-          "pathPattern": "/ill-connector/sa-update"
+          "pathPattern": "/ill-connector/sa-update",
+          "permissionsRequired": []
         }
       ]
     }
