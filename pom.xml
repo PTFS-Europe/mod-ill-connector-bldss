@@ -236,10 +236,6 @@
                   <key>raml_files</key>
                   <value>${ramlfiles_path}</value>
                 </systemProperty>
-                <systemProperty>
-                  <key>jsonschema2pojo.config.dateTimeType</key>
-                  <value>java.time.ZonedDateTime</value>
-                </systemProperty>
               </systemProperties>
             </configuration>
           </execution>
@@ -460,7 +456,6 @@
           <outputDirectory>${project.build.directory}/generated-sources/raml-jaxrs</outputDirectory>
           <targetPackage>org.folio.rest.jaxrs.model</targetPackage>
           <generateBuilders>true</generateBuilders>
-          <dateTimeType>java.time.ZonedDateTime</dateTimeType>
         </configuration>
         <executions>
           <execution>
