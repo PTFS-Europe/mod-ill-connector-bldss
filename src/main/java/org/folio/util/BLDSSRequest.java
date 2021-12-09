@@ -80,13 +80,11 @@ public class BLDSSRequest {
       Element rootEl = doc.createElement("NewOrderRequest");
       doc.appendChild(rootEl);
       Element type = doc.createElement("type");
-      type.setTextContent("A");
+      type.setTextContent("S");
       rootEl.appendChild(type);
       Element payCopyright = doc.createElement("payCopyright");
       payCopyright.setTextContent("true");
       rootEl.appendChild(payCopyright);
-      // Async requests will fail unless they contain a customerReference,
-      // the docs say it's optional, it's not
       rootEl.appendChild(getCustomerReference(doc));
 
       Node item = getItem(doc);
@@ -116,9 +114,7 @@ public class BLDSSRequest {
     Header header = this.actionPayload.getHeader();
 
     Element customerRef = doc.createElement("customerReference");
-    customerRef.setTextContent(
-      header.getRequestingAgencyId().getAgencyIdValue() + "_" + header.getRequestingAgencyRequestId()
-    );
+    customerRef.setTextContent(header.getRequestingAgencyRequestId());
     return customerRef;
   }
 
