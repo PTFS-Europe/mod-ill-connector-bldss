@@ -53,8 +53,8 @@ public final class RAUtils {
     // TODO: Remove me, I am just here to allow the connection to main API
     // to be made on the non-OKAPI port during dev
     okapiHeaders.remove("x-okapi-url");
-    logger.debug("BLDSS connector sending message:");
-    logger.debug(JsonObject.mapFrom(supplyingAgencyMessage).toString());
+    logger.info("BLDSS connector sending message:");
+    logger.info(JsonObject.mapFrom(supplyingAgencyMessage).toString());
     return HttpRequest.newBuilder()
       .uri(URI.create(raApi + "/sa-update"))
       .POST(HttpRequest.BodyPublishers.ofString(JsonObject.mapFrom(supplyingAgencyMessage).toString()));

@@ -99,13 +99,13 @@ public abstract class BaseService {
     CompletableFuture<String> future = new CompletableFuture<>();
     try {
       if (logger.isDebugEnabled()) {
-        logger.debug("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
+        logger.info("Sending 'POST {}' with body: {}", endpoint, recordData.encodePrettily());
       }
       httpClient.request(HttpMethod.POST, recordData.toBuffer(), endpoint, okapiHeaders)
         .thenApply(this::verifyAndExtractRecordId)
         .thenAccept(id -> {
           future.complete(id);
-          logger.debug("'POST {}' request successfully processed. Record with '{}' id has been created", endpoint, id);
+          logger.info("'POST {}' request successfully processed. Record with '{}' id has been created", endpoint, id);
         })
         .exceptionally(throwable -> {
           future.completeExceptionally(throwable);
@@ -126,7 +126,7 @@ public abstract class BaseService {
       logger.info("Calling GET {}", endpoint);
       httpClient.request(HttpMethod.GET, endpoint, okapiHeaders)
         .thenApply(response -> {
-          logger.debug("Validating response for GET {}", endpoint);
+          logger.info("Validating response for GET {}", endpoint);
           return verifyAndExtractBody(response);
         })
         .thenAccept(body -> {
@@ -158,12 +158,12 @@ public abstract class BaseService {
     CompletableFuture<Void> future = new CompletableFuture<>();
     try {
       if (logger.isDebugEnabled()) {
-        logger.debug("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
+        logger.info("Sending 'PUT {}' with body: {}", endpoint, recordData.encodePrettily());
       }
       httpClient.request(HttpMethod.PUT, recordData.toBuffer(), endpoint, okapiHeaders)
         .thenApply(this::verifyAndExtractBody)
         .thenAccept(response -> {
-          logger.debug("'PUT {}' request successfully processed", endpoint);
+          logger.info("'PUT {}' request successfully processed", endpoint);
           future.complete(null);
         })
         .exceptionally(e -> {
@@ -185,7 +185,7 @@ public abstract class BaseService {
   public CompletableFuture<Void> handleDeleteRequest(String endpoint, HttpClientInterface httpClient,
       Map<String, String> okapiHeaders, Logger logger) {
     CompletableFuture<Void> future = new CompletableFuture<>();
-    logger.debug(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, endpoint);
+    logger.info(CALLING_ENDPOINT_MSG, HttpMethod.DELETE, endpoint);
     try {
       httpClient.request(HttpMethod.DELETE, endpoint, okapiHeaders)
         .thenAccept(this::verifyResponse)

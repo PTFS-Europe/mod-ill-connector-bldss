@@ -107,8 +107,8 @@ public class SupplyingAgency {
   ) {
     BLDSSResponse bldssResponse = new BLDSSResponse(blResponseString);
 
-    logger.debug("Received response from BL:");
-    logger.debug(blResponseString);
+    logger.info("Received response from BL:");
+    logger.info(blResponseString);
 
     // If we don't have a response type we can't proceed
     if (bldssResponse.getResponseType() == null) {
