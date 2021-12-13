@@ -10,10 +10,13 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -57,7 +60,12 @@ public class SearchAPI extends BaseService implements SearchService {
     if (!indexName.equals("title")) {
       throw(new ConnectorQueryException("Unknown search index: " + indexName));
     }
-    url += indexValue;
+    try {
+      // URLEncode the passed search terms and append
+      url += URLEncoder.encode(indexValue, StandardCharsets.UTF_8.toString());
+    } catch (UnsupportedEncodingException e) {
+      System.out.println(e.getMessage());
+    }
 
     ArrayList<String> params = new ArrayList<>();
     params.add("SearchRequest.fullDetails=true");
@@ -69,8 +77,7 @@ public class SearchAPI extends BaseService implements SearchService {
     }
     url += "?" + String.join("&", params);
 
-    return HttpRequest.newBuilder()
-      .uri(URI.create(url)).build();
+    return HttpRequest.newBuilder(URI.create(url)).build();
   }
 
   @Override
