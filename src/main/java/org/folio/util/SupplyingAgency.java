@@ -1,6 +1,8 @@
 package org.folio.util;
 
 import io.vertx.core.json.JsonObject;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.AgencyId;
 import org.folio.rest.jaxrs.model.Costs;
 import org.folio.rest.jaxrs.model.ISO18626.SamDeliveryInfo;
@@ -17,10 +19,14 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
 import static org.folio.config.Constants.ISO18626_DATE_FORMAT;
 
 public class SupplyingAgency {
 
+  static final Logger logger = LogManager.getLogger("SupplyingAgency");
+
+  Map<String, SupplyingAgencyMessageInfo.AnswerYesNo> answerYesNoMap;
   Map<String, SupplyingAgencyMessageInfo.ReasonForMessage> reasonForMessageMap;
   Map<String, SupplyingAgencyMessageInfo.ReasonUnfilled> reasonUnfilledMap;
   Map<String, SupplyingAgencyMessageInfo.ReasonRetry> reasonRetryMap;
@@ -29,19 +35,43 @@ public class SupplyingAgency {
 
   public SupplyingAgency() {
     this.xmlUtil = new XMLUtil();
+    this.answerYesNoMap = bldssStatusToAnswerYesNoMap();
     this.reasonForMessageMap = bldssCodeToReasonForMessage();
     this.reasonUnfilledMap = bldssCodeToReasonUnfulfilled();
     this.reasonRetryMap = bldssCodeToReasonRetry();
     this.statusMap = bldssCodeToStatus();
   }
 
-  public SupplyingAgencyMessage buildMessage(String inboundMessage) {
+  // Receive a document either from a BLDSS orderline update or a response
+  // to a request to the BLDSS API and build an ISO18626 Supplying Agency
+  // Message from it
+  public SupplyingAgencyMessage buildMessageFromOrderlineUpdate(String orderlineUpdate) {
 
     // Parse what we've received into something we can use
-    Document doc = this.xmlUtil.parse(inboundMessage);
+    Document doc = this.xmlUtil.parse(orderlineUpdate);
+
+    AgencyId supplierId = new AgencyId()
+      .withAgencyIdType(AgencyId.AgencyIdType.ISIL)
+      .withAgencyIdValue("MY_SUPPLIER_ID");
+
+    AgencyId requesterId = new AgencyId()
+      .withAgencyIdType(AgencyId.AgencyIdType.ISIL)
+      .withAgencyIdValue("MY_REQUESTER_ID");
+
+    Element orderlineEl = (Element) this.xmlUtil.getNode(doc, "orderline");
+    String supplierRequestId = orderlineEl.getAttribute("id");
+
+    Element event = (Element) this.xmlUtil.getNode(doc,"event");
+    String time = event.getAttribute("time");
 
     // Header
-    SupplyingAgencyMessageHeader header = buildMessageHeader(doc);
+    SupplyingAgencyMessageHeader header = buildMessageHeader(
+      supplierId,
+      requesterId,
+      "TEST",
+      supplierRequestId,
+      time
+    );
 
     // MessageInfo
     SupplyingAgencyMessageInfo messageInfo = buildMessageInfo(doc);
@@ -71,25 +101,91 @@ public class SupplyingAgency {
     return sam;
   }
 
-  private SupplyingAgencyMessageHeader buildMessageHeader(Document doc) {
-    Element orderlineEl = (Element) this.xmlUtil.getNode(doc, "orderline");
-    String requestId = orderlineEl.getAttribute("id");
+  public SupplyingAgencyMessage buildMessageFromBLResponse(
+    String blResponseString,
+    BLDSSRequest bldssRequest
+  ) {
+    BLDSSResponse bldssResponse = new BLDSSResponse(blResponseString);
 
-    AgencyId supplierId = new AgencyId()
-      .withAgencyIdType(AgencyId.AgencyIdType.ISIL)
-      .withAgencyIdValue("MY_SUPPLIER_ID");
+    logger.debug("Received response from BL:");
+    logger.debug(blResponseString);
 
-    AgencyId requesterId = new AgencyId()
-      .withAgencyIdType(AgencyId.AgencyIdType.ISIL)
-      .withAgencyIdValue("MY_REQUESTER_ID");
+    // If we don't have a response type we can't proceed
+    if (bldssResponse.getResponseType() == null) {
+      return null;
+    }
 
-    Element event = (Element) this.xmlUtil.getNode(doc,"event");
-    String time = event.getAttribute("time");
+    String customerReference = bldssResponse.getCustomerReference();
+    String orderline = bldssResponse.getOrderline();
+    String timestamp = bldssResponse.getTimestamp();
+    AgencyId requestingAgencyId = bldssRequest.getRequestingAgencyId();
+    AgencyId supplyingAgencyId = bldssRequest.getSupplyingAgencyId();
+
+    SupplyingAgencyMessageHeader header = buildMessageHeader(
+      requestingAgencyId,
+      supplyingAgencyId,
+      customerReference,
+      orderline,
+      timestamp
+    );
+
+    // MessageInfo
+    String type = bldssResponse.getResponseType();
+    String status = bldssResponse.getStatus();
+
+    SupplyingAgencyMessageInfo.AnswerYesNo answerYesNo = status.equals("0") ?
+      SupplyingAgencyMessageInfo.AnswerYesNo.Y :
+      SupplyingAgencyMessageInfo.AnswerYesNo.N;
+
+    // Note should comprise the BL response's <message> element +
+    // anything in the BL response's <note> element
+    String sendNote = bldssResponse.getMessage();
+    String respNote = bldssResponse.getNote();
+    if(respNote.length() > 0) {
+      sendNote = sendNote + ". " + respNote;
+    }
+
+    SupplyingAgencyMessageInfo messageInfo = new SupplyingAgencyMessageInfo()
+      .withReasonForMessage(this.reasonForMessageMap.get(type))
+      .withAnswerYesNo(answerYesNo)
+      .withNote(sendNote);
+
+    if (!status.equals("0")) {
+      SupplyingAgencyMessageInfo.ReasonUnfilled reasonUnfilled = this.reasonUnfilledMap.get(status);
+      if (reasonUnfilled != null) {
+        messageInfo.setReasonUnfilled(reasonUnfilled);
+      }
+      SupplyingAgencyMessageInfo.ReasonRetry reasonRetry = this.reasonRetryMap.get(status);
+      if (reasonRetry != null) {
+        messageInfo.setReasonRetry(reasonRetry);
+      }
+    }
+
+    // StatusInfo
+    SamStatusInfo statusInfo = new SamStatusInfo()
+      .withStatus(this.statusMap.get(status))
+      .withExpectedDeliveryDate(DateTimeUtils.bldssRequestResponseToIso(bldssResponse.getEstimatedDespatchDate()))
+      .withLastChange(timestamp);
+
+    return new SupplyingAgencyMessage()
+      .withHeader(header)
+      .withMessageInfo(messageInfo)
+      .withStatusInfo(statusInfo);
+  }
+
+  private SupplyingAgencyMessageHeader buildMessageHeader(
+    AgencyId supplierId,
+    AgencyId requesterId,
+    String requesterRequestId,
+    String supplierRequestId,
+    String time
+  ) {
     return new SupplyingAgencyMessageHeader()
       .withSupplyingAgencyId(supplierId)
       .withRequestingAgencyId(requesterId)
       .withTimestamp(DateTimeUtils.bldssToIso(time))
-      .withRequestingAgencyRequestId(requestId);
+      .withRequestingAgencyRequestId(requesterRequestId)
+      .withSupplyingAgencyRequestId(supplierRequestId);
   }
 
   private SupplyingAgencyMessageInfo buildMessageInfo(Document doc) {
@@ -184,9 +280,16 @@ public class SupplyingAgency {
     return null;
   }
 
+  private Map<String, SupplyingAgencyMessageInfo.AnswerYesNo> bldssStatusToAnswerYesNoMap() {
+    return new HashMap<String, SupplyingAgencyMessageInfo.AnswerYesNo>() {{
+      put("0", SupplyingAgencyMessageInfo.AnswerYesNo.Y);
+      put("1", SupplyingAgencyMessageInfo.AnswerYesNo.N);
+    }};
+  }
 
   private Map<String, SupplyingAgencyMessageInfo.ReasonRetry> bldssCodeToReasonRetry() {
     return new HashMap<String, SupplyingAgencyMessageInfo.ReasonRetry>() {{
+      put("5", SupplyingAgencyMessageInfo.ReasonRetry.NOT_FOUND_AS_CITED);
       put("18a", SupplyingAgencyMessageInfo.ReasonRetry.NOT_FOUND_AS_CITED);
       put("18b", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
       put("18c", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
@@ -199,11 +302,13 @@ public class SupplyingAgency {
       put("18j", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
       put("18k", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
       put("21b", SupplyingAgencyMessageInfo.ReasonRetry.NOT_CURRENT_AVAILABLE_FOR_ILL);
+      put("111", SupplyingAgencyMessageInfo.ReasonRetry.NOT_FOUND_AS_CITED);
     }};
   }
 
   private Map<String, SupplyingAgencyMessageInfo.ReasonUnfilled> bldssCodeToReasonUnfulfilled() {
     return new HashMap<String, SupplyingAgencyMessageInfo.ReasonUnfilled>() {{
+      put("5", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
       put("18a", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
       put("18b", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_HELD);
       put("18c", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_ON_SHELF);
@@ -216,10 +321,19 @@ public class SupplyingAgency {
       put("18j", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
       put("18k", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
       put("21b", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_AVAILABLE_FOR_ILL);
+      put("111", SupplyingAgencyMessageInfo.ReasonUnfilled.NOT_HELD);
+      put("112", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("113", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("700", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("701", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("702", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("703", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("704", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
+      put("705", SupplyingAgencyMessageInfo.ReasonUnfilled.POLICY_PROBLEM);
     }};
   }
 
-  // Map from BLDSS event codes to ISO18626 ReasonForMessage
+  // Map from BLDSS event codes and response reasons to ISO18626 ReasonForMessage
   // We could create this in a more concise way, but this is clearer (IMHO)
   // and maps directly onto the table 9.2 here:
   // https://apitest.bldss.bl.uk/docs/guide/appendix.html#orderlineUpdates
@@ -227,6 +341,7 @@ public class SupplyingAgency {
   // there's some best guesses here
   private Map<String, SupplyingAgencyMessageInfo.ReasonForMessage> bldssCodeToReasonForMessage() {
     return new HashMap<String, SupplyingAgencyMessageInfo.ReasonForMessage>() {{
+      put("newOrder", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
       put("1", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
       put("10", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
       put("11", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
@@ -291,7 +406,9 @@ public class SupplyingAgency {
 
   private Map<String, SamStatusInfo.Status> bldssCodeToStatus() {
     return new HashMap<String, SamStatusInfo.Status>() {{
+      put("0", SamStatusInfo.Status.REQUEST_RECEIVED);
       put("1", SamStatusInfo.Status.REQUEST_RECEIVED);
+      put("5", SamStatusInfo.Status.UNFILLED);
       put("10", SamStatusInfo.Status.EXPECT_TO_SUPPLY);
       put("11", SamStatusInfo.Status.LOANED);
       put("12", SamStatusInfo.Status.WILL_SUPPLY);
@@ -349,6 +466,15 @@ public class SupplyingAgency {
       put("9b", SamStatusInfo.Status.REQUEST_RECEIVED);
       put("9c", SamStatusInfo.Status.EXPECT_TO_SUPPLY);
       put("9d", SamStatusInfo.Status.REQUEST_RECEIVED);
+      put("111", SamStatusInfo.Status.UNFILLED);
+      put("112", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("113", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("700", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("701", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("702", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("703", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("704", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("705", SamStatusInfo.Status.RETRY_POSSIBLE);
     }};
   }
 

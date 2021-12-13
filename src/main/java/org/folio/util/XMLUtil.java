@@ -81,7 +81,10 @@ public class XMLUtil {
   public Node getNode(Document doc, String nodeName) {
     NodeList nodes = doc.getElementsByTagName(nodeName);
     if (nodes.getLength() != 1) {
-      throw(new ConnectorQueryException("Unexpected number of response " + nodeName + " elements: " + nodes.getLength()));
+      throw(new ConnectorQueryException(
+        "Unexpected number of response " + nodeName + " elements: " + nodes.getLength() + "\n" +
+          docAsString(doc, true)
+      ));
     }
     return nodes.item(0);
   }

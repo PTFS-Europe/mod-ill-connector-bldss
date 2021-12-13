@@ -8,20 +8,17 @@ import io.vertx.core.json.JsonObject;
 import org.folio.exception.ConnectorQueryException;
 import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionRequest;
+import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
-import org.folio.util.CQLUtil;
-import org.folio.util.SupplyingAgency;
-import org.folio.util.XMLUtil;
+import org.folio.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.w3c.dom.Document;
 
 import javax.ws.rs.core.Response;
-import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Map;
@@ -35,10 +32,6 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   private SearchService illSearchService;
   @Autowired
   private ActionService illActionService;
-
-  // TODO: Remove me, I am just hardcoding the RA port,
-  // ultimately this will just be on OKAPI and we'll target by URL
-  private static final String raApi = "http://localhost:6666/ill-ra";
 
   public ConnectorAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -66,8 +59,33 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
 
     // Determine what to do based on the action name
     if (action.equals("submitRequest")) {
+      // - Submit the request
+      // - Return a confirmation
+      // - Send a SupplyingAgency Message to the RA containing the BL response
       illActionService.performAction(action, payload, vertxContext, okapiHeaders)
-        .thenAccept(acceptResult -> asyncResultHandler.handle(succeededFuture(buildOkResponse(acceptResult))))
+        .thenAccept(acceptResult -> {
+          String responseString = acceptResult.getActionResponseString();
+          ActionResponse actionResponse = acceptResult.getActionResponse();
+          BLDSSRequest bldssRequest = acceptResult.getBldssRequest();
+          // Send the response
+          asyncResultHandler.handle(succeededFuture(buildOkResponse(actionResponse)));
+          // Construct and send a SupplyingAgency Message
+          SupplyingAgency supplyingAgency = new SupplyingAgency();
+          SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildMessageFromBLResponse(
+            responseString,
+            bldssRequest
+          );
+
+          // Only proceed if we have a message to send
+          if (supplyingAgencyMessage != null) {
+            HttpRequest.Builder raRequest = RAUtils.buildRequestForSa(
+              okapiHeaders,
+              supplyingAgencyMessage
+            );
+            RAUtils.sendRequestToRa(raRequest, okapiHeaders);
+          }
+
+        })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
     }
   }
@@ -83,29 +101,18 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
        - Convert it to a BLDSS XML orderline update response
        - Return to the BL
     */
-    SupplyingAgencyMessage sam = new SupplyingAgency().buildMessage(entity);
+    SupplyingAgencyMessage sam = new SupplyingAgency().buildMessageFromOrderlineUpdate(entity);
 
-    // TODO: Remove me, I am just here to allow the connection to main API
-    // to be made on the non-OKAPI port during dev
-    okapiHeaders.remove("x-okapi-url");
-    HttpClient client = HttpClient.newBuilder()
-      .build();
+    HttpRequest.Builder request = RAUtils.buildRequestForSa(
+      okapiHeaders,
+      sam
+    );
 
-    HttpRequest.Builder request = HttpRequest.newBuilder()
-      .uri(URI.create(raApi + "/sa-update"))
-      .POST(HttpRequest.BodyPublishers.ofString(JsonObject.mapFrom(sam).toString()));
-    // Add our existing headers
-    for (Map.Entry<String, String> entry : okapiHeaders.entrySet()) {
-      request.header(entry.getKey(), entry.getValue());
-    }
-    // Add additional missing headers
-    request.header("Content-type", "application/json");
-    request.header("Accept", "application/json");
+    CompletableFuture<HttpResponse<String>> future = RAUtils.sendRequestToRa(
+      request,
+      okapiHeaders
+    );
 
-    HttpRequest builtRequest = request.build();
-    // Send the request, receive the response, convert it into a response object
-    // then complete the future with it
-    CompletableFuture<HttpResponse<String>> future = client.sendAsync(builtRequest, HttpResponse.BodyHandlers.ofString());
     // Receive the response from the main API, translate it into BLDSS and return it
     future.thenApply(apiResponse -> {
       JsonObject responseJson =  new JsonObject(apiResponse.body());

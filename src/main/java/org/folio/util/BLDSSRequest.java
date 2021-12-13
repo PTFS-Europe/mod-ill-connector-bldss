@@ -21,7 +21,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.folio.config.Constants.BLDSS_TEST_API_URL;
-import static org.folio.config.Constants.CALLBACK_URL;
 
 public class BLDSSRequest {
 
@@ -90,6 +89,8 @@ public class BLDSSRequest {
       Node item = getItem(doc);
       Node delivery = getRequestedDelivery(doc);
       Node service = getService(doc);
+      // TODO: Temporarily omit LibraryPrivilege
+      // Node libraryPrivilege = getLibraryPrivilege(doc);
       if (item != null) {
         rootEl.appendChild(item);
       }
@@ -99,6 +100,12 @@ public class BLDSSRequest {
       if (service != null) {
         rootEl.appendChild(service);
       }
+      // TODO: Temporarily omit library privilege
+      /*
+      if (libraryPrivilege != null) {
+        rootEl.appendChild(libraryPrivilege);
+      }
+      */
 
       XMLUtil xmlUtil = new XMLUtil();
       this.payload = xmlUtil.docAsString(doc, false);
@@ -107,9 +114,20 @@ public class BLDSSRequest {
     }
   }
 
+  // Return whether this account has "library privilege" enabled
+  // For more on Library Privilege, see here:
+  // https://support.talis.com/hc/en-us/articles/205864591-British-Library-integration-functional-overview
+  // TODO: Should be derived from the module config
+  // For now, we just omit it entirely
+  /*
+  private Node getLibraryPrivilege(Document doc) {
+    Element libraryPrivilege = doc.createElement("LibraryPrivilege");
+    libraryPrivilege.setTextContent("0");
+    return libraryPrivilege;
+  }
+  */
+
   // Return a customerReference node containing a customer reference
-  // The contents of this are pretty arbitrary, it might be worth trying
-  // to make it more meaningful to the end user
   private Node getCustomerReference(Document doc) {
     Header header = this.actionPayload.getHeader();
 
@@ -234,11 +252,6 @@ public class BLDSSRequest {
     int physicalPopulated = 0;
     int electronicPopulated = 0;
 
-    // Add our callback URL
-    Element callbackUrl = doc.createElement("callbackUrl");
-    callbackUrl.setTextContent(CALLBACK_URL);
-    delivery.appendChild(callbackUrl);
-
     for (RequestedDeliveryInfo deliveryInfo : deliveryInfos) {
       // We have to infer the address type from the properties contained therein,
       // see: https://folio-project.slack.com/archives/CC0PHKEMT/p1634657867107400
@@ -274,9 +287,10 @@ public class BLDSSRequest {
   }
 
   private Node getService(Document doc) {
+    // TODO: These should be derived from the user
     Element service = doc.createElement("Service");
     appendTextElement(doc, "1", "service", service);
-    appendTextElement(doc, "2", "format", service);
+    appendTextElement(doc, "1", "format", service);
     appendTextElement(doc, "3", "speed", service);
     appendTextElement(doc, "1", "quality", service);
     return service;
@@ -321,6 +335,27 @@ public class BLDSSRequest {
     return blAddress;
   }
 
+  // Return the RequestingAgencyId as an AgencyId
+  public AgencyId getRequestingAgencyId() {
+    SupplyingAgencyId reqRequestingAgencyId = this.actionPayload.getHeader().getRequestingAgencyId();
+    String reqReqAgencyIdType = reqRequestingAgencyId.getAgencyIdType().toString();
+    String reqReqAgencyIdValue = reqRequestingAgencyId.getAgencyIdValue();
+
+    return new AgencyId()
+      .withAgencyIdType(AgencyId.AgencyIdType.valueOf(reqReqAgencyIdType))
+      .withAgencyIdValue(reqReqAgencyIdValue);
+  }
+
+  // Return the SupplyingAgencyId as an AgencyId
+  public AgencyId getSupplyingAgencyId() {
+    SupplyingAgencyId reqSupplyingAgencyId = this.actionPayload.getHeader().getSupplyingAgencyId();
+    String reqSupAgencyIdType = reqSupplyingAgencyId.getAgencyIdType().toString();
+    String reqSupAgencyIdValue = reqSupplyingAgencyId.getAgencyIdValue();
+
+    return new AgencyId()
+      .withAgencyIdType(AgencyId.AgencyIdType.valueOf(reqSupAgencyIdType))
+      .withAgencyIdValue(reqSupAgencyIdValue);
+  }
   private void appendTextElement(Document doc, String value, String elementName, Element appendTo) {
     if (value == null) return;
     Element element = doc.createElement(elementName);
@@ -361,5 +396,4 @@ public class BLDSSRequest {
       { "MusicScore", "score" }
     }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
   }
-
 }
