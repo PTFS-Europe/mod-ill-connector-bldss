@@ -1,6 +1,12 @@
 {
   "id": "${artifactId}-${version}",
   "name": "Interlibrary Request Connector",
+  "requires": [
+    {
+      "id": "ill-ra",
+      "version": "1.0"
+    }
+  ],
   "provides": [
     {
       "id": "_tenant-2.0",
@@ -22,19 +28,34 @@
       ]
     },
     {
-      "id": "${artifactId}",
+      "id": "ill-connector-search",
       "version": "1.0",
+      "interfaceType": "multiple",
       "handlers": [
         {
           "methods": ["GET"],
           "pathPattern": "/ill-connector/search",
           "permissionsRequired": ["ill-connector.search.collection.get"]
-        },
+        }
+      ]
+    },
+    {
+      "id": "ill-connector-action",
+      "version": "1.0",
+      "interfaceType": "multiple",
+      "handlers": [
         {
           "methods": ["POST"],
           "pathPattern": "/ill-connector/action",
           "permissionsRequired": ["ill-connector.action.item.post"]
-        },
+        }
+      ]
+    },
+    {
+      "id": "ill-connector-sa-update",
+      "version": "1.0",
+      "interfaceType": "multiple",
+      "handlers": [
         {
           "methods": ["POST"],
           "pathPattern": "/ill-connector/sa-update",
