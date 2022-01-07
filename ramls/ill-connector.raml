@@ -12,7 +12,7 @@ types:
   errors:     !include raml-util/schemas/errors.schema
   actionRequest: !include schemas/action-request.schema
   actionResponse: !include mod-ill-ramls/schemas/sa-request/response/request-confirmation.schema
-  searchResponse: !include schemas/search-response.schema
+  searchResponse: !include mod-ill-ramls/schemas/search/search-response.schema
 
 traits:
   language: !include raml-util/traits/language.raml
@@ -36,7 +36,7 @@ traits:
               type: searchResponse
               example:
                 strict: false
-                value: !include examples/search-response.json
+                value: !include mod-ill-ramls/examples/search/search-response.json
   /action:
     post:
       displayName: Perform an action on a request
