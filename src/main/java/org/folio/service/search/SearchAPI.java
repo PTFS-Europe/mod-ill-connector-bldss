@@ -112,7 +112,7 @@ public class SearchAPI extends BaseService implements SearchService {
         resultItemLevel.setYear(getDescendant(itemLevel, "year", 0));
         resultItemLevel.setType(getDescendant(itemLevel, "type", 0));
 
-        Metadata resultMetadata = new Metadata();
+        SearchResultMetadata resultMetadata = new SearchResultMetadata();
         resultMetadata.setTitleLevel(resultTitleLevel);
         resultMetadata.setItemLevel(resultItemLevel);
 
