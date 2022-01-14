@@ -9,6 +9,7 @@ documentation:
     content: <b>API for interlibrary loan connector</b>
 
 types:
+  connectorInfo: !include schemas/connector-info.schema
   errors:     !include raml-util/schemas/errors.schema
   actionRequest: !include schemas/action-request.schema
   actionResponse: !include mod-ill-ramls/schemas/sa-request/response/request-confirmation.schema
@@ -21,6 +22,18 @@ traits:
   validate: !include raml-util/traits/validation.raml
 
 /ill-connector:
+  /info:
+    get:
+      displayName: Returns information about this connector
+      responses:
+        200:
+          description: Connector information
+          body:
+            application/json:
+              type: connectorInfo
+              example:
+                strict: true
+                value: !include examples/connector-info.json
   /search:
     get:
       is: [

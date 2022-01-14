@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "Connector information",
+  "description": "A description of this connector, including abilities",
+  "properties": {
+    "id": {
+      "description": "The ID of the connector",
+      "type": "string"
+    },
+    "name": {
+      "description": "The name of this connector",
+      "type": "string"
+    },
+    "abilities": {
+      "description": "An array of functions this connector can perform",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["id","name","abilities"]
+}

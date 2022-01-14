@@ -1,9 +1,17 @@
 package org.folio.config;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class Constants {
 
   private Constants() {
   }
+
+  public static final String CONNECTOR_NAME = "British Library Document Supply";
+  public static final ArrayList<String> CONNECTOR_ABILITIES = new ArrayList<>(
+    Arrays.asList("ill-connector-search", "ill-connector-action", "ill-connector-sa-update")
+  );
 
   public static final String ID = "id";
   public static final String OKAPI_URL = "x-okapi-url";

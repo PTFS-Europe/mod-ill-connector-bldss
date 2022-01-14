@@ -1,0 +1,5 @@
+{
+  "id": "mod-ill-connector-bldss-1.0",
+  "name": "British Library Document Supply Service",
+  "abilities": ["ill-connector-search", "ill-connector-action", "ill-connector-sa-request"]
+}

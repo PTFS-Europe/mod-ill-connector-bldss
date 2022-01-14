@@ -21,10 +21,13 @@ import org.w3c.dom.Document;
 import javax.ws.rs.core.Response;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 import static io.vertx.core.Future.succeededFuture;
+import static org.folio.config.Constants.CONNECTOR_ABILITIES;
+import static org.folio.config.Constants.CONNECTOR_NAME;
 
 public class ConnectorAPI extends BaseApi implements IllConnector {
 
@@ -50,6 +53,14 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
     illSearchService.performSearch(xcqlDoc, offset, limit, vertxContext, okapiHeaders)
       .thenAccept(results -> asyncResultHandler.handle(succeededFuture(buildOkResponse(results))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
+  }
+
+  @Override
+  public void getIllConnectorInfo(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    HashMap<String, Object> response = new HashMap<>();
+    response.put("name", CONNECTOR_NAME);
+    response.put("abilities", CONNECTOR_ABILITIES);
+    asyncResultHandler.handle(succeededFuture(buildOkResponse(response)));
   }
 
   @Override

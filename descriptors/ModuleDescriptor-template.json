@@ -28,6 +28,18 @@
       ]
     },
     {
+      "id": "ill-connector-info",
+      "version": "1.0",
+      "interfaceType": "multiple",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/info",
+          "permissionsRequired": ["ill-connector.info.item.get"]
+        }
+      ]
+    },
+    {
       "id": "ill-connector-search",
       "version": "1.0",
       "interfaceType": "multiple",
@@ -65,6 +77,11 @@
     }
   ],
   "permissionSets": [
+    {
+      "permissionName": "ill-connector.info.item.get",
+      "displayName": "Interlibrary loan connector - get connector information",
+      "description": "Get information on this connector, including its abilities"
+    },
     {
       "permissionName": "ill-connector.search.collection.get",
       "displayName": "Interlibrary loan connector - perform search with supplier",
