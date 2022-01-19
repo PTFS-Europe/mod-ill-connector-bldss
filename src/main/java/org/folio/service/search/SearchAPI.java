@@ -121,7 +121,13 @@ public class SearchAPI extends BaseService implements SearchService {
         returnResults.add(result);
       }
     }
+
+    NodeList totalRecordsNodes = doc.getElementsByTagName("numberOfRecords");
+    Node totalRecords = totalRecordsNodes.item(0);
+    searchResponse.setTotalRecords(Integer.parseInt(totalRecords.getTextContent()));
+
     searchResponse.setResults(returnResults);
+
     return searchResponse;
   }
 
