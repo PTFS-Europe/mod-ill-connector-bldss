@@ -29,13 +29,11 @@ public class BLDSSRequest {
   private String payload;
   private final HashMap<String, String> parameters;
   private ActionMetadata actionPayload;
-  private Map<String, String> typeMap;
 
   public BLDSSRequest(String httpMethod, String path, HashMap<String, String> parameters) {
     this.httpMethod = httpMethod;
     this.path = "/api" + path;
     this.parameters = parameters;
-    this.typeMap = isoTypeToBldss();
   }
 
   public CompletableFuture<HttpResponse<String>> makeRequest() {
@@ -147,7 +145,8 @@ public class BLDSSRequest {
     }
     if (publicationInfo != null) {
       String isoType = publicationInfo.getPublicationType().toString();
-      String blType = this.typeMap.get(isoType);
+      ISO18626Util isoUtil = new ISO18626Util();
+      String blType = isoUtil.isoTypeToBldss(isoType);
       if (blType != null) {
         appendTextElement(doc, blType, "type", item);
       }
@@ -382,18 +381,5 @@ public class BLDSSRequest {
       }
     }
     return null;
-  }
-
-  // Translate an ISO18626 "PublicationType" into a BLDSS "type"
-  private Map<String, String> isoTypeToBldss() {
-    return typeMap = Stream.of(new String[][] {
-      { "Article", "article" },
-      { "Book", "book" },
-      { "Journal", "journal" },
-      { "Newspaper", "newspaper" },
-      { "ConferenceProc", "conference"},
-      { "Thesis", "thesis" },
-      { "MusicScore", "score" }
-    }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
   }
 }
