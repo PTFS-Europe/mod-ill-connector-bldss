@@ -1,7 +1,6 @@
 package org.folio.service.search;
 
 import io.vertx.core.Context;
-import org.folio.exception.ConnectorQueryException;
 import org.folio.rest.jaxrs.model.*;
 import org.folio.service.BaseService;
 import org.folio.util.ISO18626Util;
@@ -19,9 +18,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.folio.config.Constants.BLDSS_TEST_API_URL;
 
@@ -48,28 +50,37 @@ public class SearchAPI extends BaseService implements SearchService {
   @Override
   public HttpRequest prepareRequest(Document xcqlDoc, String url, int offset, int limit) {
     NodeList nodes = xcqlDoc.getElementsByTagName("searchClause");
-    if (nodes.getLength() > 1) {
-      throw(new ConnectorQueryException("Unexpected number of searchClause elements: " + nodes.getLength() + "(Expected 1)"));
-    }
-    Node firstNode = nodes.item(0);
-    String indexName = "";
-    String indexValue = "";
-    if (firstNode.getNodeType() == Node.ELEMENT_NODE) {
-      Element el = (Element) firstNode;
-      indexName = el.getElementsByTagName("index").item(0).getTextContent();
-      indexValue = el.getElementsByTagName("term").item(0).getTextContent();
-    }
-    if (!indexName.equals("title")) {
-      throw(new ConnectorQueryException("Unknown search index: " + indexName));
-    }
-    try {
-      // URLEncode the passed search terms and append
-      url += URLEncoder.encode(indexValue, StandardCharsets.UTF_8.toString());
-    } catch (UnsupportedEncodingException e) {
-      System.out.println(e.getMessage());
-    }
 
     ArrayList<String> params = new ArrayList<>();
+
+    // A list of search indexes BLDSS supports
+    List<String> supportedIndexes = Stream.of(new String[] {
+      "issn",
+      "isbn",
+      "title",
+      "author",
+      "type"
+    }).collect(Collectors.toList());
+
+    int length = nodes.getLength();
+    for (int i = 0; i < length; i++) {
+      if (nodes.item(i).getNodeType() == Node.ELEMENT_NODE) {
+        Element el = (Element) nodes.item(i);
+        String indexName = el.getElementsByTagName("index").item(0).getTextContent();
+        if (supportedIndexes.contains(indexName)) {
+          String indexValue = el.getElementsByTagName("term").item(0).getTextContent();
+          try {
+            // URLEncode the passed search terms and append
+            String encoded = URLEncoder.encode(indexValue, StandardCharsets.UTF_8.toString());
+            String param = "SearchRequest.Advanced." + indexName + "=" + encoded;
+            params.add(param);
+          } catch (UnsupportedEncodingException e) {
+            System.out.println(e.getMessage());
+          }
+        }
+      }
+    }
+
     params.add("SearchRequest.fullDetails=true");
     if (offset > 0) {
       params.add("SearchRequest.start=" + offset);
