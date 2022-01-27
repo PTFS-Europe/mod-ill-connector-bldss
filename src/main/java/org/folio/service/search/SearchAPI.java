@@ -137,6 +137,8 @@ public class SearchAPI extends BaseService implements SearchService {
 
         result.setMetadata(resultMetadata);
 
+        result.setAbstract(getDescendant(element, "abstractText", 0));
+
         returnResults.add(result);
 
       }
