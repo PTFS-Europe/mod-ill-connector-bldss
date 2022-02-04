@@ -88,11 +88,20 @@ public class BLDSSAuth {
     map.put("nonce", this.nonce);
     map.put("signature_method", this.signature_method);
     // Now add our request parameters
-    map.putAll(this.requestParameters);
+    if (this.requestParameters != null) {
+      map.putAll(this.requestParameters);
+    }
     // Return a "&" concatenated key/value pair string
     return map.entrySet()
       .stream()
-      .map(e -> encodeValue(e.getKey()) + "=" + encodeValue(e.getValue()))
+      .map(e -> {
+        if (e.getKey() != null && e.getValue() != null) {
+          return encodeValue(e.getKey()) + "=" + encodeValue(e.getValue());
+        } else {
+          return null;
+        }
+      })
+      .filter(Objects::nonNull)
       .collect(Collectors.joining("&"));
   }
 
