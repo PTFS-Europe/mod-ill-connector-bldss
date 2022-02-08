@@ -33,7 +33,7 @@ public class ActionAPI implements ActionService {
     CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
     BLDSSRequest req = new BLDSSRequest("POST", path, params);
     req.setPayload(payload);
-    req.makeRequest().thenApply(respObj -> {
+    req.makeRequest(true).thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),
         prepareResponse(respObj, req),

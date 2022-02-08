@@ -12,6 +12,7 @@ import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
+import org.folio.service.getter.GetterService;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
 import org.folio.util.*;
@@ -35,9 +36,20 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   private SearchService illSearchService;
   @Autowired
   private ActionService illActionService;
+  @Autowired
+  private GetterService illGetterService;
 
   public ConnectorAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
+  }
+
+  @Override
+  // Receive a string representing the resource we want to get from the supplier,
+  // then get it
+  public void getIllConnectorGetterByToGet(String toGet, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    illGetterService.getFromConnector(toGet)
+      .thenAccept(results -> asyncResultHandler.handle(succeededFuture(buildOkResponse(results))))
+      .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
 
   @Override

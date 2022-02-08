@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "title": "apiResponse object",
+  "description": "The apiResponse object for a generic getter request",
+  "properties": {
+    "timestamp": {
+      "description": "The timestamp the response was received",
+      "type": "string"
+    },
+    "status": {
+      "description": "A status code",
+      "type": "string"
+    },
+    "message": {
+      "description": "A message relating to the response",
+      "type": "string"
+    },
+    "getterResult": {
+      "description": "The result of the request",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["result"]
+}

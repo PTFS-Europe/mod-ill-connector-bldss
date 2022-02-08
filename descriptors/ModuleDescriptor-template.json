@@ -40,6 +40,18 @@
       ]
     },
     {
+      "id": "ill-connector-getter",
+      "version": "1.0",
+      "interfaceType": "multiple",
+      "handlers": [
+        {
+          "methods": ["GET"],
+          "pathPattern": "/ill-connector/getter/{toGet}",
+          "permissionsRequired": ["ill-ra.requests.item.post"]
+        }
+      ]
+    },
+    {
       "id": "ill-connector-search",
       "version": "1.0",
       "interfaceType": "multiple",

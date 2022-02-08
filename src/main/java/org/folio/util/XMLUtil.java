@@ -90,12 +90,12 @@ public class XMLUtil {
   }
 
   // Take an XML string and return a specified element tree JSONified
-  public String getJson(String xml, String startElement) {
+  public String getJson(String xml, String startElement, String nodeName) {
     // We need to take the entire "result" node and convert it to JSON
     String output = "";
     StringWriter writer = new StringWriter();
     Document doc = this.parse(xml);
-    Node result = this.getNode(doc, "result");
+    Node result = this.getNode(doc, nodeName);
     try {
       Transformer t = TransformerFactory.newInstance().newTransformer();
       t.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");

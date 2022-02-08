@@ -36,22 +36,43 @@ public class BLDSSRequest {
     this.parameters = parameters;
   }
 
-  public CompletableFuture<HttpResponse<String>> makeRequest() {
+  public CompletableFuture<HttpResponse<String>> makeRequest(Boolean needsAuth) {
+    URI uri = URI.create(BLDSS_TEST_API_URL + this.path);
+
     CompletableFuture<HttpResponse<String>> future = new CompletableFuture<>();
     HttpClient client = HttpClient.newHttpClient();
-    BLDSSAuth auth = new BLDSSAuth(this.httpMethod, this.path, this.parameters, this.payload);
-    String authHeader = auth.getHeaderString();
-    HttpRequest request = HttpRequest.newBuilder()
-      .uri(URI.create(BLDSS_TEST_API_URL + this.path))
-      .POST(HttpRequest.BodyPublishers.ofString(this.payload))
-      .header("BLDSS-API-Authentication", authHeader)
-      .header("Content-type", "application/xml")
-      .build();
+    HttpRequest.Builder builder = HttpRequest.newBuilder()
+      .uri(uri)
+      .header("Content-type", "application/xml");
+
+    if (needsAuth) {
+      BLDSSAuth auth = new BLDSSAuth(this.httpMethod, this.path, this.parameters, this.payload);
+      String authHeader = auth.getHeaderString();
+      builder.header("BLDSS-API-Authentication", authHeader);
+    }
+
+    switch(this.httpMethod) {
+      case "GET":
+        builder.GET();
+        break;
+      case "POST":
+        builder.POST(HttpRequest.BodyPublishers.ofString(this.payload));
+        break;
+      case "PUT":
+        builder.PUT(HttpRequest.BodyPublishers.ofString(this.payload));
+        break;
+      case "DELETE":
+        builder.DELETE();
+        break;
+    }
+
+    HttpRequest request = builder.build();
     client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-        .thenApply(apiResponse -> {
-          future.complete(apiResponse);
-          return apiResponse;
-        });
+      .thenApply(apiResponse -> {
+        future.complete(apiResponse);
+        return apiResponse;
+      });
+
     return future;
   }
 
