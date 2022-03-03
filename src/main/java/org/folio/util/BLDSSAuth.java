@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
 public class BLDSSAuth {
 
   private String authorisation;
-  private String api_application;
-  private String api_application_auth;
-  private String api_key;
-  private String api_key_auth;
-  private String request_time;
-  private String nonce;
-  private String signature_method;
-  private String httpMethod;
-  private String path;
-  private String payload;
-  private HashMap<String, String> requestParameters;
+  private final String api_application;
+  private final String api_application_auth;
+  private final String api_key;
+  private final String api_key_auth;
+  private final String request_time;
+  private final String nonce;
+  private final String signature_method;
+  private final String httpMethod;
+  private final String path;
+  private final String payload;
+  private final HashMap<String, String> requestParameters;
 
   private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
 

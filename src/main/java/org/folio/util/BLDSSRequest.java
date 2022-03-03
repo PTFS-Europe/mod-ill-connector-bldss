@@ -1,9 +1,11 @@
 package org.folio.util;
 
-import org.folio.rest.jaxrs.model.*;
+import io.vertx.core.json.JsonObject;
+import org.folio.common.OkapiParams;
+import org.folio.rest.jaxrs.model.BibliographicInfo;
+import org.folio.rest.jaxrs.model.PublicationInfo;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -12,15 +14,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.ZonedDateTime;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.folio.config.Constants.BLDSS_TEST_API_URL;
+import static org.folio.config.Constants.OUR_BASE_API;
 
 public class BLDSSRequest {
 
@@ -28,7 +28,11 @@ public class BLDSSRequest {
   private final String path;
   private String payload;
   private final HashMap<String, String> parameters;
-  private ActionMetadata actionPayload;
+  private BibliographicInfo searchResultBibInfo;
+  private BibliographicInfo submissionBibInfo;
+  private PublicationInfo searchResultPubInfo;
+  private PublicationInfo submissionPubInfo;
+
 
   public BLDSSRequest(String httpMethod, String path, HashMap<String, String> parameters) {
     this.httpMethod = httpMethod;
@@ -76,10 +80,6 @@ public class BLDSSRequest {
     return future;
   }
 
-  public ActionMetadata getActionPayload() {
-    return this.actionPayload;
-  }
-
   public HashMap<String, String> getParameters() {
     return parameters;
   }
@@ -88,52 +88,205 @@ public class BLDSSRequest {
     this.parameters.put(key, value);
   }
 
-  // Take an ISO18626 payload and translate it into a BLDSS compliant one
-  public void setPayload(ActionMetadata payload) {
-    this.actionPayload = payload;
+  // Take an arbitrary payload and translate it into a BLDSS compliant one
+
+  public void setPayload(String actionName, String payload, Map<String, String> okapiHeaders) {
+    ISO18626Util iso18626Util = new ISO18626Util();
+    OkapiParams okapiParams = new OkapiParams(okapiHeaders);
+
+    JsonObject json = new JsonObject(payload);
+
+    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    DocumentBuilder db;
     try {
-      DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-      DocumentBuilder db = dbf.newDocumentBuilder();
-      Document doc = db.newDocument();
-      Element rootEl = doc.createElement("NewOrderRequest");
-      doc.appendChild(rootEl);
-      Element type = doc.createElement("type");
-      type.setTextContent("S");
-      rootEl.appendChild(type);
-      Element payCopyright = doc.createElement("payCopyright");
-      payCopyright.setTextContent("true");
-      rootEl.appendChild(payCopyright);
-      rootEl.appendChild(getCustomerReference(doc));
-
-      Node item = getItem(doc);
-      Node delivery = getRequestedDelivery(doc);
-      Node service = getService(doc);
-      // TODO: Temporarily omit LibraryPrivilege
-      // Node libraryPrivilege = getLibraryPrivilege(doc);
-      if (item != null) {
-        rootEl.appendChild(item);
-      }
-      if (delivery != null) {
-        rootEl.appendChild(delivery);
-      }
-      if (service != null) {
-        rootEl.appendChild(service);
-      }
-      // TODO: Temporarily omit library privilege
-      /*
-      if (libraryPrivilege != null) {
-        rootEl.appendChild(libraryPrivilege);
-      }
-      */
-
-      XMLUtil xmlUtil = new XMLUtil();
-      this.payload = xmlUtil.docAsString(doc, false);
+      db = dbf.newDocumentBuilder();
     } catch (ParserConfigurationException e) {
       e.printStackTrace();
+      return;
+    }
+
+    Element rootEl;
+
+    Document doc = db.newDocument();
+
+    // What we do depends on the action we're processing
+    switch (actionName) {
+      case "submitRequest":
+        String localRequestId = json.getString("localRequestId");
+        JsonObject requestMetadata = json.getJsonObject("requestMetadata");
+        JsonObject submission = json.getJsonObject("submission");
+        JsonObject selectedResult = json.getJsonObject("selectedResult");
+
+        // Set the properties that we will use to obtain metadata
+        setInfos(selectedResult, submission);
+
+        rootEl = doc.createElement("NewOrderRequest");
+        doc.appendChild(rootEl);
+
+        // Top level elements
+        addValueToEl(doc, "S", "type", rootEl);
+        addValueToEl(doc, "true", "payCopyright", rootEl);
+        addValueToEl(doc, localRequestId, "customerReference", rootEl);
+        addValueToEl(doc, okapiParams.getUrl() + OUR_BASE_API + "/6839f2bf-5c47-469c-a80b-29765eaa9417/sa-update", "callbackUrl", rootEl);
+
+        // Service
+        JsonObject services = requestMetadata.getJsonObject("services");
+        String format = services.getString("format");
+        String speed = services.getString("speed");
+        String quality = services.getString("quality");
+        Element service = doc.createElement("Service");
+        addValueToEl(doc, "1", "service", service);
+        addValueToEl(doc, format, "format", service);
+        addValueToEl(doc, speed, "speed", service);
+        addValueToEl(doc, quality, "quality", service);
+        rootEl.appendChild(service);
+
+        // Item
+        Element item = doc.createElement("Item");
+
+        // uin
+        String supplierUniqueRecordId = this.searchResultBibInfo.getSupplierUniqueRecordId();
+        addValueToEl(doc, supplierUniqueRecordId, "uin", item);
+
+        // type
+        String publicationType = this.searchResultPubInfo.getPublicationType().toString();
+        String bldssType = iso18626Util.isoTypeToBldss(publicationType);
+        addValueToEl(doc, bldssType, "type", item);
+
+        // titleLevel
+        Element titleLevel = doc.createElement("titleLevel");
+        // title
+        String title = getPrioritisedValue(
+          this.searchResultBibInfo.getTitle(),
+          this.submissionBibInfo.getTitle()
+        );
+        addValueToEl(doc, title, "title", titleLevel);
+        // author
+        String author = getPrioritisedValue(
+          this.searchResultBibInfo.getAuthor(),
+          this.submissionBibInfo.getAuthor()
+        );
+        addValueToEl(doc, author, "author", titleLevel);
+        // ISBN
+        String searchIsbn = iso18626Util.getIdentifierFromBibInfo(this.searchResultBibInfo, "ISBN");
+        String subIsbn = iso18626Util.getIdentifierFromBibInfo(this.submissionBibInfo, "ISBN");
+        String isbn = getPrioritisedValue(searchIsbn, subIsbn);
+        addValueToEl(doc, isbn, "ISBN", titleLevel);
+        // ISSN
+        String searchIssn = iso18626Util.getIdentifierFromBibInfo(this.searchResultBibInfo, "ISSN");
+        String subIssn = iso18626Util.getIdentifierFromBibInfo(this.submissionBibInfo, "ISSN");
+        String issn = getPrioritisedValue(searchIssn, subIssn);
+        addValueToEl(doc, issn, "ISSN", titleLevel);
+        // ISMN
+        String searchIsmn = iso18626Util.getIdentifierFromBibInfo(this.searchResultBibInfo, "ISMN");
+        String subIsmn = iso18626Util.getIdentifierFromBibInfo(this.submissionBibInfo, "ISMN");
+        String ismn = getPrioritisedValue(searchIsmn, subIsmn);
+        addValueToEl(doc, ismn, "ISMN", titleLevel);
+        // publisher
+        String publisher = getPrioritisedValue(
+          this.searchResultPubInfo.getPublisher(),
+          this.submissionPubInfo.getPublisher()
+        );
+        addValueToEl(doc, publisher, "publisher", titleLevel);
+        if (titleLevel.getChildNodes().getLength() > 0) {
+          item.appendChild(titleLevel);
+        }
+
+        // itemLevel
+        Element itemLevel = doc.createElement("itemLevel");
+        // year
+        String publicationDate = getPrioritisedValue(
+          this.searchResultPubInfo.getPublicationDate(),
+          this.submissionPubInfo.getPublicationDate()
+        );
+        if (publicationDate != null) {
+          ZonedDateTime zdt = DateTimeUtils.stringToDt(publicationDate);
+          int year = zdt.getYear();
+          addValueToEl(doc, Integer.toString(year), "year", itemLevel);
+        }
+        // volume
+        String volume = getPrioritisedValue(
+          this.searchResultBibInfo.getVolume(),
+          this.submissionBibInfo.getVolume()
+        );
+        addValueToEl(doc, volume, "volume", itemLevel);
+        // issue
+        String issue = getPrioritisedValue(
+          this.searchResultBibInfo.getIssue(),
+          this.submissionBibInfo.getIssue()
+        );
+        addValueToEl(doc, issue, "issue", itemLevel);
+        // edition
+        String edition = getPrioritisedValue(
+          this.searchResultBibInfo.getEdition(),
+          this.submissionBibInfo.getEdition()
+        );
+        addValueToEl(doc, edition, "edition", itemLevel);
+        if (itemLevel.getChildNodes().getLength() > 0) {
+          item.appendChild(itemLevel);
+        }
+
+        // itemOfInterestLevel
+        Element itemOfInterestLevel = doc.createElement("itemOfInterestLevel");
+        // title
+        String titleOfComponent = getPrioritisedValue(
+          this.searchResultBibInfo.getTitleOfComponent(),
+          this.submissionBibInfo.getTitleOfComponent()
+        );
+        addValueToEl(doc, titleOfComponent, "title", itemOfInterestLevel);
+        // author
+        String authorOfComponent = getPrioritisedValue(
+          this.searchResultBibInfo.getAuthorOfComponent(),
+          this.submissionBibInfo.getAuthorOfComponent()
+        );
+        addValueToEl(doc, authorOfComponent, "author", itemOfInterestLevel);
+        // pages
+        String pagesRequested = getPrioritisedValue(
+          this.searchResultBibInfo.getPagesRequested(),
+          this.submissionBibInfo.getPagesRequested()
+        );
+        addValueToEl(doc, pagesRequested, "pages", itemOfInterestLevel);
+        if (itemOfInterestLevel.getChildNodes().getLength() > 0) {
+          item.appendChild(itemOfInterestLevel);
+        }
+
+        rootEl.appendChild(item);
+        break;
+      default:
+        throw new IllegalStateException("Unexpected value: " + actionName);
+    }
+
+    XMLUtil xmlUtil = new XMLUtil();
+    System.out.println(xmlUtil.docAsString(doc, false));
+    this.payload = xmlUtil.docAsString(doc, false);
+  }
+
+  // Set the BibliographicInfo & PublicationInfo properties
+  private void setInfos(JsonObject searchResult, JsonObject submissionMetadata) {
+    JsonObject searchBibInfo = searchResult.getJsonObject("metadata").getJsonObject("BibliographicInfo");
+    JsonObject searchPubInfo = searchResult.getJsonObject("metadata").getJsonObject("PublicationInfo");
+    JsonObject subBibInfo = submissionMetadata.getJsonObject("submissionMetadata").getJsonObject("BibliographicInfo");
+    JsonObject subPubInfo = submissionMetadata.getJsonObject("submissionMetadata").getJsonObject("PublicationInfo");
+    this.searchResultBibInfo = searchBibInfo.mapTo(BibliographicInfo.class);
+    this.searchResultPubInfo = searchPubInfo.mapTo(PublicationInfo.class);
+    this.submissionBibInfo = subBibInfo.mapTo(BibliographicInfo.class);
+    this.submissionPubInfo = subPubInfo.mapTo(PublicationInfo.class);
+  }
+
+  // Create an element, set its text and append it to something
+  private void addValueToEl(Document doc, String value, String elementName, Element appendTo) {
+    if (value != null && value.length() > 0) {
+      Element el = doc.createElement(elementName);
+      el.setTextContent(value);
+      appendTo.appendChild(el);
     }
   }
 
-  // Return whether this account has "library privilege" enabled
+  // Obtain a value, whichever is populated
+  private String getPrioritisedValue(String value1, String value2) {
+    return value1 != null && value1.length() > 0 ? value1 : value2;
+  }
+
   // For more on Library Privilege, see here:
   // https://support.talis.com/hc/en-us/articles/205864591-British-Library-integration-functional-overview
   // TODO: Should be derived from the module config
@@ -145,262 +298,4 @@ public class BLDSSRequest {
     return libraryPrivilege;
   }
   */
-
-  // Return a customerReference node containing a customer reference
-  private Node getCustomerReference(Document doc) {
-    Header header = this.actionPayload.getHeader();
-
-    Element customerRef = doc.createElement("customerReference");
-    customerRef.setTextContent(header.getRequestingAgencyRequestId());
-    return customerRef;
-  }
-
-  private Node getItem(Document doc) {
-    Element item = doc.createElement("Item");
-
-    BibliographicInfo bibInfo = this.actionPayload.getBibliographicInfo();
-    PublicationInfo publicationInfo = this.actionPayload.getPublicationInfo();
-
-    if (bibInfo != null) {
-      appendTextElement(doc, bibInfo.getSupplierUniqueRecordId(), "uin", item);
-    }
-    if (publicationInfo != null) {
-      String isoType = publicationInfo.getPublicationType().toString();
-      ISO18626Util isoUtil = new ISO18626Util();
-      String blType = isoUtil.isoTypeToBldss(isoType);
-      if (blType != null) {
-        appendTextElement(doc, blType, "type", item);
-      }
-    }
-
-    Node titleLevel = getTitleLevel(doc);
-    Node itemLevel = getItemLevel(doc);
-    Node itemOfInterestLevel = getItemOfInterestLevel(doc);
-
-    if (titleLevel.getChildNodes().getLength() > 0) {
-      item.appendChild(titleLevel);
-    }
-    if (itemLevel.getChildNodes().getLength() > 0) {
-      item.appendChild(itemLevel);
-    }
-    if (itemOfInterestLevel.getChildNodes().getLength() > 0) {
-      item.appendChild(itemOfInterestLevel);
-    }
-    return item;
-  }
-
-  private Node getTitleLevel(Document doc)  {
-    Element titleLevel = doc.createElement("titleLevel");
-
-    BibliographicInfo bibInfo = this.actionPayload.getBibliographicInfo();
-    List<SupplierInfo> supplierInfos = this.actionPayload.getSupplierInfo();
-    PublicationInfo publicationInfo = this.actionPayload.getPublicationInfo();
-
-
-    if (bibInfo != null) {
-      appendTextElement(doc, bibInfo.getTitle(), "title", titleLevel);
-      appendTextElement(doc, bibInfo.getAuthor(), "author", titleLevel);
-      String isbn = getBibIdentifier(
-        bibInfo.getBibliographicItemId(),
-        "ISBN"
-      );
-      String issn = getBibIdentifier(
-        bibInfo.getBibliographicItemId(),
-        "ISSN"
-      );
-      String ismn = getBibIdentifier(
-        bibInfo.getBibliographicItemId(),
-        "ISMN"
-      );
-      appendTextElement(doc, isbn, "ISBN", titleLevel);
-      appendTextElement(doc, issn, "ISSN", titleLevel);
-    }
-    if (supplierInfos != null) {
-      // We're not supporting the "brokerage" aspect of "SupplierInfo" but according to the
-      // spec, it can also be used "in other circumstances", and it appears to be the only
-      // place to get a call number! So we'll just use the first one we find... :-/
-      appendTextElement(doc, getCallNumber(supplierInfos), "shelfmark", titleLevel);
-    }
-    if (publicationInfo != null) {
-      appendTextElement(doc, publicationInfo.getPublisher(), "publisher", titleLevel);
-    }
-
-    return titleLevel;
-  }
-
-  private Node getItemLevel(Document doc)  {
-    Element itemLevel = doc.createElement("itemLevel");
-
-    PublicationInfo pubInfo = this.actionPayload.getPublicationInfo();
-    BibliographicInfo bibInfo = this.actionPayload.getBibliographicInfo();
-
-    if (pubInfo != null) {
-      appendTextElement(doc, pubInfo.getPublicationDate(), "year", itemLevel);
-    }
-    if (bibInfo != null) {
-      appendTextElement(doc, bibInfo.getVolume(), "volume", itemLevel);
-      appendTextElement(doc, bibInfo.getIssue(), "part", itemLevel);
-//      appendTextElement(doc, bibInfo.getIssue(), "issue", itemLevel);
-      appendTextElement(doc, bibInfo.getEdition(), "edition", itemLevel);
-    }
-
-    return itemLevel;
-  }
-
-  private Node getItemOfInterestLevel(Document doc)  {
-    Element itemOfInterestLevel = doc.createElement("itemOfInterestLevel");
-
-    BibliographicInfo bibInfo = this.actionPayload.getBibliographicInfo();
-
-    if (bibInfo != null) {
-      appendTextElement(doc, bibInfo.getTitleOfComponent(), "title", itemOfInterestLevel);
-      appendTextElement(doc, bibInfo.getPagesRequested(), "pages", itemOfInterestLevel);
-      appendTextElement(doc, bibInfo.getAuthorOfComponent(), "author", itemOfInterestLevel);
-    }
-    return itemOfInterestLevel;
-  }
-
-  // Given a list of RequestedDeliveryInfo objects, use the first of each type
-  // to construct our "Delivery" element
-  private Node getRequestedDelivery(Document doc) {
-    List<RequestedDeliveryInfo> deliveryInfos = this.actionPayload.getRequestedDeliveryInfo();
-
-    // Bail if we've nothing to work with
-    if (deliveryInfos.size() == 0) return null;
-
-    Element delivery = doc.createElement("Delivery");
-    int physicalPopulated = 0;
-    int electronicPopulated = 0;
-
-    for (RequestedDeliveryInfo deliveryInfo : deliveryInfos) {
-      // We have to infer the address type from the properties contained therein,
-      // see: https://folio-project.slack.com/archives/CC0PHKEMT/p1634657867107400
-      Map<String, Object> address = deliveryInfo.getAddress().getAdditionalProperties();
-
-      // getAdditionalProperties seems to return a LinkedHashMap so we cast to that,
-      // ignoring the warning. I'm sure there must be a better way of doing this.
-      @SuppressWarnings("unchecked")
-      LinkedHashMap<String, Object> electronic = (LinkedHashMap<String, Object>) address.get("ElectronicAddress");
-      @SuppressWarnings("unchecked")
-      LinkedHashMap<String, Object> physical = (LinkedHashMap<String, Object>) address.get("PhysicalAddress");
-
-      if (physical != null && physicalPopulated == 0) {
-        Node physicalNode = getPhysicalAddress(doc, physical);
-        if (physicalNode != null) {
-          delivery.appendChild(physicalNode);
-          physicalPopulated++;
-          continue;
-        }
-      }
-
-      if (electronic != null && electronicPopulated == 0) {
-        Node electronicNode = getElectronic(doc, electronic);
-        if (electronicNode != null) {
-          delivery.appendChild(electronicNode);
-          electronicPopulated++;
-        }
-      }
-
-    }
-
-    return (physicalPopulated != 0 || electronicPopulated != 0) ? delivery : null;
-  }
-
-  private Node getService(Document doc) {
-    // TODO: These should be derived from the user
-    Element service = doc.createElement("Service");
-    appendTextElement(doc, "1", "service", service);
-    appendTextElement(doc, "1", "format", service);
-    appendTextElement(doc, "3", "speed", service);
-    appendTextElement(doc, "1", "quality", service);
-    return service;
-  }
-
-  private Node getElectronic(Document doc, LinkedHashMap<String, Object> isoAddress) {
-    if (isoAddress.get("ElectronicAddressType").toString().equals("Email")) {
-      Element email = doc.createElement("Email");
-      email.setTextContent(isoAddress.get("ElectronicAddressData").toString());
-      return email;
-    }
-    return null;
-  }
-
-  // ISO18626 has a bizarre set of properties to represent a physical address,
-  // this is an attempt to maximise the chances of gettting an address that
-  // BLDSS can use (taking into account BLDSS' required fields)
-  private Node getPhysicalAddress(Document doc, LinkedHashMap<String, Object> isoAddress) {
-    Element blAddress = doc.createElement("Address");
-
-    // Map a BL's physical address property to an ISO one
-    Map<String, String> blToIso = Stream.of(new String[][] {
-      { "AddressLine1", "Line1" },
-      { "AddressLine2", "Line2" },
-      { "TownOrCity", "Locality" },
-      { "CountyOrState", "Locality" },
-      { "ProvinceOrRegion", "Region" },
-      { "PostOrZipCode", "PostalCode" },
-      { "Country", "Country" }
-    }).collect(Collectors.toMap(data -> data[0], data -> data[1]));
-
-    // Iterate each BL property and get the ISO equivalent value
-    blToIso.forEach((k, v) -> {
-      String isoValue = isoAddress.get(v).toString();
-      if (isoValue != null && isoValue.length() > 0) {
-        Element el = doc.createElement(k);
-        el.setTextContent(isoValue);
-        blAddress.appendChild(el);
-      }
-    });
-
-    return blAddress;
-  }
-
-  // Return the RequestingAgencyId as an AgencyId
-  public AgencyId getRequestingAgencyId() {
-    SupplyingAgencyId reqRequestingAgencyId = this.actionPayload.getHeader().getRequestingAgencyId();
-    String reqReqAgencyIdType = reqRequestingAgencyId.getAgencyIdType().toString();
-    String reqReqAgencyIdValue = reqRequestingAgencyId.getAgencyIdValue();
-
-    return new AgencyId()
-      .withAgencyIdType(AgencyId.AgencyIdType.valueOf(reqReqAgencyIdType))
-      .withAgencyIdValue(reqReqAgencyIdValue);
-  }
-
-  // Return the SupplyingAgencyId as an AgencyId
-  public AgencyId getSupplyingAgencyId() {
-    SupplyingAgencyId reqSupplyingAgencyId = this.actionPayload.getHeader().getSupplyingAgencyId();
-    String reqSupAgencyIdType = reqSupplyingAgencyId.getAgencyIdType().toString();
-    String reqSupAgencyIdValue = reqSupplyingAgencyId.getAgencyIdValue();
-
-    return new AgencyId()
-      .withAgencyIdType(AgencyId.AgencyIdType.valueOf(reqSupAgencyIdType))
-      .withAgencyIdValue(reqSupAgencyIdValue);
-  }
-  private void appendTextElement(Document doc, String value, String elementName, Element appendTo) {
-    if (value == null) return;
-    Element element = doc.createElement(elementName);
-    element.setTextContent(value);
-    appendTo.appendChild(element);
-  }
-
-  private String getCallNumber(List<SupplierInfo> supplierInfos) {
-    for (SupplierInfo info : supplierInfos) {
-      String callNumber = info.getCallNumber();
-      if (callNumber != null && callNumber.length() > 0) {
-        return callNumber;
-      }
-    }
-    return null;
-  }
-
-  // Seems the BLDSS API can only copy with one identifier, so just
-  // return the first we find
-  private String getBibIdentifier(List<BibliographicItemId> ids, String needle) {
-    for (BibliographicItemId id : ids) {
-      if (id.getBibliographicItemIdentifierCode().toString().equals(needle)) {
-        return id.getBibliographicItemIdentifier();
-      }
-    }
-    return null;
-  }
 }

@@ -1,5 +1,9 @@
 package org.folio.util;
 
+import org.folio.rest.jaxrs.model.BibliographicInfo;
+import org.folio.rest.jaxrs.model.BibliographicRecordId;
+
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -30,6 +34,22 @@ public class ISO18626Util {
     for (Map.Entry<String, String> entry: typeMap.entrySet()) {
       if (entry.getValue().equals(bldss)) {
         return entry.getKey();
+      }
+    }
+    return null;
+  }
+
+  // Given a BibliographicInfo object, return the first matching identifier we find
+  public String getIdentifierFromBibInfo(BibliographicInfo bibInfo, String findType) {
+    List<BibliographicRecordId> identifiers = bibInfo.getBibliographicRecordId();
+    for (int i = 0; i < identifiers.size(); i++) {
+      BibliographicRecordId bibRecordId = identifiers.get(i);
+      String idType = bibRecordId.getBibliographicRecordIdentifierCode().toString();
+      if (idType.equals(findType)) {
+        String idValue = bibRecordId.getBibliographicRecordIdentifier();
+        if (idValue != null) {
+          return idValue;
+        }
       }
     }
     return null;

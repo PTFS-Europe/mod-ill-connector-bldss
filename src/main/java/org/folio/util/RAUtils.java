@@ -3,6 +3,7 @@ package org.folio.util;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.common.OkapiParams;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
 
 import java.net.URI;
@@ -16,9 +17,7 @@ public final class RAUtils {
 
   private static final Logger logger = LogManager.getLogger("RAUtils");
 
-  // TODO: Remove me, I am just hardcoding the RA port,
-  // ultimately this will just be on OKAPI and we'll target by URL
-  private static final String raApi = "http://localhost:6666/ill-ra";
+  private static final String raApi = "/ill-ra";
 
   // Prevent instantiation
   public RAUtils() {}
@@ -50,13 +49,13 @@ public final class RAUtils {
     Map<String, String> okapiHeaders,
     SupplyingAgencyMessage supplyingAgencyMessage
   ) {
-    // TODO: Remove me, I am just here to allow the connection to main API
-    // to be made on the non-OKAPI port during dev
-    okapiHeaders.remove("x-okapi-url");
+    OkapiParams okapiParams = new OkapiParams(okapiHeaders);
+
     logger.info("BLDSS connector sending message:");
     logger.info(JsonObject.mapFrom(supplyingAgencyMessage).toString());
+
     return HttpRequest.newBuilder()
-      .uri(URI.create(raApi + "/sa-update"))
+      .uri(URI.create(okapiParams.getUrl() + raApi + "/sa-update"))
       .POST(HttpRequest.BodyPublishers.ofString(JsonObject.mapFrom(supplyingAgencyMessage).toString()));
   }
 }

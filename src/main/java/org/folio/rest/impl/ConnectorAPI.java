@@ -6,7 +6,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import org.folio.exception.ConnectorQueryException;
-import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionRequest;
 import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
@@ -29,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.vertx.core.Future.succeededFuture;
 import static org.folio.config.Constants.CONNECTOR_ABILITIES;
 import static org.folio.config.Constants.CONNECTOR_NAME;
+import static org.folio.config.Constants.CONNECTOR_UID;
 
 public class ConnectorAPI extends BaseApi implements IllConnector {
 
@@ -70,6 +70,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   @Override
   public void getIllConnectorInfo(Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     HashMap<String, Object> response = new HashMap<>();
+    response.put("uid", CONNECTOR_UID);
     response.put("name", CONNECTOR_NAME);
     response.put("abilities", CONNECTOR_ABILITIES);
     asyncResultHandler.handle(succeededFuture(buildOkResponse(response)));
@@ -78,7 +79,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   @Override
   public void postIllConnectorAction(ActionRequest request, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     String action = request.getActionName();
-    ActionMetadata payload = request.getActionMetadata();
+    String payload = request.getActionMetadata();
 
     // Determine what to do based on the action name
     if (action.equals("submitRequest")) {
@@ -114,8 +115,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   }
 
   @Override
-  public void postIllConnectorSaUpdate(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-
+  public void postIllConnector6839f2bf5c47469cA80b29765eaa9417SaUpdate(String entity, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
     /* Pass the message forward to the main API:
        - Receiving a BLDSS XML payload from the BL containing an orderline update
        - Convert it to an JSON ISO18626 Supplying Agency Message
@@ -144,5 +144,4 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
       return null;
     });
   }
-
 }

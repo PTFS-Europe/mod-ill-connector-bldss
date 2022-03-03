@@ -78,11 +78,10 @@
     {
       "id": "ill-connector-sa-update",
       "version": "1.0",
-      "interfaceType": "multiple",
       "handlers": [
         {
           "methods": ["POST"],
-          "pathPattern": "/ill-connector/sa-update",
+          "pathPattern": "/ill-connector/6839f2bf-5c47-469c-a80b-29765eaa9417/sa-update",
           "permissionsRequired": []
         }
       ]

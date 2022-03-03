@@ -9,9 +9,8 @@
       "type": "string"
     },
     "actionMetadata": {
-      "description": "The ISO18626 metadata relating to the action",
-      "type": "object",
-      "$ref": "action-request-metadata.schema"
+      "description": "The arbitrary metadata relating to the action",
+      "type": "string"
     }
   },
   "additionalProperties": false,

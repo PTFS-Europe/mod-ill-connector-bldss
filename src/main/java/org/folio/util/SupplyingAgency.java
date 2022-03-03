@@ -20,7 +20,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.folio.config.Constants.ISO18626_DATE_FORMAT;
+import static org.folio.config.Constants.*;
 
 public class SupplyingAgency {
 
@@ -118,12 +118,10 @@ public class SupplyingAgency {
     String customerReference = bldssResponse.getCustomerReference();
     String orderline = bldssResponse.getOrderline();
     String timestamp = bldssResponse.getTimestamp();
-    AgencyId requestingAgencyId = bldssRequest.getRequestingAgencyId();
-    AgencyId supplyingAgencyId = bldssRequest.getSupplyingAgencyId();
 
     SupplyingAgencyMessageHeader header = buildMessageHeader(
-      requestingAgencyId,
-      supplyingAgencyId,
+      SUPPLYING_AGENCY_ID,
+      REQUESTING_AGENCY_ID,
       customerReference,
       orderline,
       timestamp
@@ -138,17 +136,17 @@ public class SupplyingAgency {
       SupplyingAgencyMessageInfo.AnswerYesNo.N;
 
     // Note should comprise the BL response's <message> element +
-    // anything in the BL response's <note> element
-    String sendNote = bldssResponse.getMessage();
-    String respNote = bldssResponse.getNote();
-    if(respNote.length() > 0) {
-      sendNote = sendNote + ". " + respNote;
-    }
+    // anything in the BL response's <note> element + the raw response string.
+    // We provide it in a JSON object to allow parsing at the other end
+    JsonObject note = new JsonObject();
+    note.put("blMessage", bldssResponse.getMessage());
+    note.put("blNote", bldssResponse.getNote());
+    note.put("responseString", blResponseString);
 
     SupplyingAgencyMessageInfo messageInfo = new SupplyingAgencyMessageInfo()
       .withReasonForMessage(this.reasonForMessageMap.get(type))
       .withAnswerYesNo(answerYesNo)
-      .withNote(sendNote);
+      .withNote(note.toString());
 
     if (!status.equals("0")) {
       SupplyingAgencyMessageInfo.ReasonUnfilled reasonUnfilled = this.reasonUnfilledMap.get(status);

@@ -1,10 +1,8 @@
 package org.folio.service.action;
 
 import io.vertx.core.Context;
-import org.folio.rest.jaxrs.model.ActionMetadata;
 import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ConfirmationHeader;
-import org.folio.rest.jaxrs.model.Header;
 import org.folio.util.BLDSSActionResponse;
 import org.folio.util.BLDSSRequest;
 import org.folio.util.DateTimeUtils;
@@ -26,13 +24,13 @@ public class ActionAPI implements ActionService {
   // a BLDSSActionResponse object
   // We do this because we may need to initiate a side-effect API call that
   // requires properties from the original request and the response
-  public CompletableFuture<BLDSSActionResponse> performAction(String actionName, ActionMetadata payload, Context context, Map<String, String> headers) {
+  public CompletableFuture<BLDSSActionResponse> performAction(String actionName, String payload, Context context, Map<String, String> headers) {
     String path =  "/orders";
     HashMap<String, Object> toReturn = new HashMap<>();
     HashMap<String, String> params = new HashMap<>();
     CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
     BLDSSRequest req = new BLDSSRequest("POST", path, params);
-    req.setPayload(payload);
+    req.setPayload(actionName, payload, headers);
     req.makeRequest(true).thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),
@@ -54,7 +52,7 @@ public class ActionAPI implements ActionService {
     ActionResponse actionResponse = new ActionResponse();
     Document bodyDoc = xmlUtil.parse(response.body());
 
-    Header requestHeader = request.getActionPayload().getHeader();
+  //  Header requestHeader = request.getActionPayload().getHeader();
 
     String received = xmlUtil.getNode(bodyDoc, "timestamp").getTextContent();
     String timestampReceived = DateTimeUtils.bldssToIso(received);
@@ -67,10 +65,10 @@ public class ActionAPI implements ActionService {
 
     // Build most of our ConfirmationHeader
     ConfirmationHeader confirmationHeader = new ConfirmationHeader()
-      .withSupplyingAgencyId(requestHeader.getSupplyingAgencyId())
-      .withRequestingAgencyId(requestHeader.getRequestingAgencyId())
+  //    .withSupplyingAgencyId(requestHeader.getSupplyingAgencyId())
+  //    .withRequestingAgencyId(requestHeader.getRequestingAgencyId())
       .withTimestamp(DateTimeUtils.dtToString(ZonedDateTime.now(), ISO18626_DATE_FORMAT))
-      .withRequestingAgencyRequestId(requestHeader.getRequestingAgencyRequestId())
+  //    .withRequestingAgencyRequestId(requestHeader.getRequestingAgencyRequestId())
       .withTimestampReceived(timestampReceived)
       .withMessageStatus(messageStatus);
 
