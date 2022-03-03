@@ -59,7 +59,8 @@ public class SearchAPI extends BaseService implements SearchService {
       "isbn",
       "title",
       "author",
-      "type"
+      "type",
+      "general"
     }).collect(Collectors.toList());
 
     int length = nodes.getLength();
