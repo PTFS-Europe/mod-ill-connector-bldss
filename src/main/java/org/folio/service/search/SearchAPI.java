@@ -18,14 +18,135 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static org.folio.config.Constants.BLDSS_TEST_API_URL;
+
+class IndexMapper {
+  String issn;
+  String isbn;
+  String title;
+  String author;
+  String type;
+  String general;
+
+  public IndexMapper() {
+    this.issn = null;
+    this.isbn = null;
+    this.title = null;
+    this.author = null;
+    this.type = null;
+    this.general = null;
+  }
+
+  private String prepParam(String paramName, String value) {
+    String encoded = null;
+    try {
+      encoded = URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+    } catch (UnsupportedEncodingException e) {
+      e.printStackTrace();
+    }
+    return "SearchRequest.Advanced." + paramName + "=" + encoded;
+  }
+
+  public ArrayList<String> escape() {
+    ArrayList<String> params = new ArrayList<>();
+
+    if (this.issn != null) {
+      params.add(prepParam("issn", this.issn));
+    }
+
+    if (this.isbn != null) {
+      params.add(prepParam("isbn", this.isbn));
+    }
+
+    if (this.title != null) {
+      params.add(prepParam("title", this.title));
+    }
+
+    if (this.author != null) {
+      params.add(prepParam("author", this.author));
+    }
+
+    if (this.type != null) {
+      params.add(prepParam("type", this.type));
+    }
+
+    if (this.general != null) {
+      params.add(prepParam("general", this.general));
+    }
+
+    return params;
+  }
+
+  public void parse(NodeList nodes) {
+    int length = nodes.getLength();
+    for (int i = 0; i < length; i++) {
+      if (nodes.item(i).getNodeType() == Node.ELEMENT_NODE) {
+        Element el = (Element) nodes.item(i);
+        String indexName = el.getElementsByTagName("index").item(0).getTextContent();
+        switch (indexName) {
+          case "Title":
+          case "TitleOfComponent":
+            this.getTitle(indexName, el);
+            break;
+          case "Author":
+          case "AuthorOfComponent":
+            this.getAuthor(indexName, el);
+            break;
+          case "PublicationType":
+            this.getType(indexName, el);
+            break;
+          case "ISBN":
+            this.getIsbn(indexName, el);
+            break;
+          case "ISSN":
+            this.getIssn(indexName, el);
+            break;
+          case "Volume":
+            this.getGeneral(indexName, el);
+            break;
+        }
+      }
+    }
+  }
+
+  private void getGeneral(String indexName, Element el) {
+    this.general = el.getElementsByTagName("term").item(0).getTextContent();
+  }
+
+  private void getIssn(String indexName, Element el) {
+    this.issn = el.getElementsByTagName("term").item(0).getTextContent();
+  }
+
+  private void getIsbn(String indexName, Element el) {
+    this.isbn = el.getElementsByTagName("term").item(0).getTextContent();
+  }
+
+  private void getType(String indexName, Element el) {
+    this.type = el.getElementsByTagName("term").item(0).getTextContent().toLowerCase();
+  }
+
+  private void getAuthor(String indexName, Element el) {
+    // We can only send one author, so
+    // AuthorOfComponent is prioritised over
+    // Author
+    if (indexName.equals("AuthorOfComponent") || (this.author == null && indexName.equals("Author"))) {
+      this.author = el.getElementsByTagName("term").item(0).getTextContent();
+    }
+  }
+
+  private void getTitle(String indexName, Element el) {
+    // We can only send one title, so
+    // TitleOfComponent is prioritised over
+    // Title
+    if (indexName.equals("TitleOfComponent") || (this.title == null && indexName.equals("Title"))) {
+      this.title = el.getElementsByTagName("term").item(0).getTextContent();
+    }
+  }
+}
 
 public class SearchAPI extends BaseService implements SearchService {
 
@@ -51,36 +172,9 @@ public class SearchAPI extends BaseService implements SearchService {
   public HttpRequest prepareRequest(Document xcqlDoc, String url, int offset, int limit) {
     NodeList nodes = xcqlDoc.getElementsByTagName("searchClause");
 
-    ArrayList<String> params = new ArrayList<>();
-
-    // A list of search indexes BLDSS supports
-    List<String> supportedIndexes = Stream.of(new String[] {
-      "issn",
-      "isbn",
-      "title",
-      "author",
-      "type",
-      "general"
-    }).collect(Collectors.toList());
-
-    int length = nodes.getLength();
-    for (int i = 0; i < length; i++) {
-      if (nodes.item(i).getNodeType() == Node.ELEMENT_NODE) {
-        Element el = (Element) nodes.item(i);
-        String indexName = el.getElementsByTagName("index").item(0).getTextContent();
-        if (supportedIndexes.contains(indexName)) {
-          String indexValue = el.getElementsByTagName("term").item(0).getTextContent();
-          try {
-            // URLEncode the passed search terms and append
-            String encoded = URLEncoder.encode(indexValue, StandardCharsets.UTF_8.toString());
-            String param = "SearchRequest.Advanced." + indexName + "=" + encoded;
-            params.add(param);
-          } catch (UnsupportedEncodingException e) {
-            System.out.println(e.getMessage());
-          }
-        }
-      }
-    }
+    IndexMapper indexMapper = new IndexMapper();
+    indexMapper.parse(nodes);
+    ArrayList<String> params = indexMapper.escape();
 
     params.add("SearchRequest.fullDetails=true");
     if (offset > 0) {
@@ -90,7 +184,6 @@ public class SearchAPI extends BaseService implements SearchService {
       params.add("SearchRequest.maxResults=" + limit);
     }
     url += "?" + String.join("&", params);
-
     return HttpRequest.newBuilder(URI.create(url)).build();
   }
 
