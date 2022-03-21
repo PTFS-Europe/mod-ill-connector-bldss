@@ -3,10 +3,7 @@ package org.folio.service.action;
 import io.vertx.core.Context;
 import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ConfirmationHeader;
-import org.folio.util.BLDSSActionResponse;
-import org.folio.util.BLDSSRequest;
-import org.folio.util.DateTimeUtils;
-import org.folio.util.XMLUtil;
+import org.folio.util.*;
 import org.w3c.dom.Document;
 
 import java.net.http.HttpResponse;
@@ -26,12 +23,10 @@ public class ActionAPI implements ActionService {
   // requires properties from the original request and the response
   public CompletableFuture<BLDSSActionResponse> performAction(String actionName, String payload, Context context, Map<String, String> headers) {
     String path =  "/orders";
-    HashMap<String, Object> toReturn = new HashMap<>();
     HashMap<String, String> params = new HashMap<>();
     CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
-    BLDSSRequest req = new BLDSSRequest("POST", path, params);
-    req.setPayload(actionName, payload, headers);
-    req.makeRequest(true).thenApply(respObj -> {
+    BLDSSOrderRequest req = new BLDSSOrderRequest("POST", path, params, true, payload, headers);
+    req.makeRequest().thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),
         prepareResponse(respObj, req),

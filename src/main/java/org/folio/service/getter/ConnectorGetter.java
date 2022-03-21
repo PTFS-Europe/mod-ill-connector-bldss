@@ -2,9 +2,11 @@ package org.folio.service.getter;
 
 import org.folio.rest.jaxrs.model.GetterResponse;
 import org.folio.service.BaseService;
-import org.folio.util.*;
+import org.folio.util.BLDSSGetterRequest;
+import org.folio.util.BLDSSResponse;
+import org.folio.util.GetterEndpointMap;
+import org.folio.util.XMLUtil;
 
-import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
 public class ConnectorGetter extends BaseService implements GetterService {
@@ -17,13 +19,11 @@ public class ConnectorGetter extends BaseService implements GetterService {
     Boolean needsAuth = endpointMap.getNeedsAuth(toGet);
 
     CompletableFuture<GetterResponse> future = new CompletableFuture<>();
-    HashMap<String, String> params = new HashMap<>();
-    BLDSSRequest req = new BLDSSRequest(
-      "GET",
-      "/" + endpoint,
-      params
+    BLDSSGetterRequest req = new BLDSSGetterRequest(
+      endpoint,
+      needsAuth
     );
-    req.makeRequest(needsAuth).thenApply(respObj -> {
+    req.makeRequest().thenApply(respObj -> {
       String body = respObj.body();
 
       BLDSSResponse bldssResponse = new BLDSSResponse(body);
