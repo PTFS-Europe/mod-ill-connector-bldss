@@ -13,11 +13,11 @@ import java.net.http.HttpResponse;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
+import static org.folio.config.Constants.RA_API;
+
 public final class RAUtils {
 
   private static final Logger logger = LogManager.getLogger("RAUtils");
-
-  private static final String raApi = "/ill-ra";
 
   // Prevent instantiation
   public RAUtils() {}
@@ -55,7 +55,7 @@ public final class RAUtils {
     logger.info(JsonObject.mapFrom(supplyingAgencyMessage).toString());
 
     return HttpRequest.newBuilder()
-      .uri(URI.create(okapiParams.getUrl() + raApi + "/sa-update"))
+      .uri(URI.create(okapiParams.getUrl() + RA_API + "/sa-update"))
       .POST(HttpRequest.BodyPublishers.ofString(JsonObject.mapFrom(supplyingAgencyMessage).toString()));
   }
 }

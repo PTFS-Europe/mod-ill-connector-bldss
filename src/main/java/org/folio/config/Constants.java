@@ -25,6 +25,7 @@ public class Constants {
   public static final String OKAPI_URL = "x-okapi-url";
   public static final String OUR_BASE_API = "/ill-connector";
   public static final String BLDSS_TEST_API_URL = "https://apitest.bldss.bl.uk";
+  public static final String RA_API = "/ill-ra";
   public static final String BLDSS_DATE_FORMAT = "yyyy-MM-dd HH:mm:ss.SSS z";
   public static final String BLDSS_REQUEST_RESPONSE_DATE_FORMAT = "dd/MM/yyyy";
   public static final String ISO18626_DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ssZ";
