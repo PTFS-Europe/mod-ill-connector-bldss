@@ -5,6 +5,6 @@ import java.util.HashMap;
 public class BLDSSGetterRequest extends BLDSSRequest{
 
   public BLDSSGetterRequest(String path, Boolean needsAuth) {
-    super("GET", "/" + path, new HashMap<>(), needsAuth);
+    super("getter", "GET", "/" + path, new HashMap<>(), needsAuth);
   }
 }

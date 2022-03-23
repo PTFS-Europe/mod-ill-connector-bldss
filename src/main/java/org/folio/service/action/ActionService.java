@@ -13,13 +13,22 @@ public interface ActionService {
   /**
    * This method creates {@link BLDSSActionResponse}
    *
-   * @param actionName Name of the action to be performed
    * @param payload A string representing arbitrary metadata
    * @param context Vert.X context
    * @param headers OKAPI headers
    * @return response {@link BLDSSActionResponse}
    */
-  CompletableFuture<BLDSSActionResponse> performAction(String actionName, String payload, Context context, Map<String, String> headers);
+  CompletableFuture<BLDSSActionResponse> performOrderAction(String payload, Context context, Map<String, String> headers);
+
+  /**
+   * This method creates {@link BLDSSActionResponse}
+   *
+   * @param payload A string representing arbitrary metadata
+   * @param context Vert.X context
+   * @param headers OKAPI headers
+   * @return response {@link BLDSSActionResponse}
+   */
+  CompletableFuture<BLDSSActionResponse> performCancelAction(String payload, Context context, Map<String, String> headers);
 
   /**
    * This method receives an HttpResponse containing the supplier's API response

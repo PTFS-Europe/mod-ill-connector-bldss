@@ -31,7 +31,7 @@ public class BLDSSResponse {
 
   public String getResponseType() {
 
-    // The various types of response we could receive
+    // The various explicit types of response we could receive
     ArrayList<String> potentials = new ArrayList<>(Arrays.asList(
       "newOrder"
         /*

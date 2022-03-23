@@ -101,7 +101,7 @@ public class SupplyingAgency {
     return sam;
   }
 
-  public SupplyingAgencyMessage buildMessageFromBLResponse(
+  public SupplyingAgencyMessage buildOrderMessageFromBLResponse(
     String blResponseString,
     BLDSSRequest bldssRequest
   ) {
@@ -163,6 +163,63 @@ public class SupplyingAgency {
     SamStatusInfo statusInfo = new SamStatusInfo()
       .withStatus(this.statusMap.get(status))
       .withExpectedDeliveryDate(DateTimeUtils.bldssRequestResponseToIso(bldssResponse.getEstimatedDespatchDate()))
+      .withLastChange(timestamp);
+
+    return new SupplyingAgencyMessage()
+      .withHeader(header)
+      .withMessageInfo(messageInfo)
+      .withStatusInfo(statusInfo);
+  }
+
+  public SupplyingAgencyMessage buildCancelMessageFromBLResponse(
+    String blResponseString,
+    BLDSSCancelRequest bldssRequest
+  ) {
+    BLDSSResponse bldssResponse = new BLDSSResponse(blResponseString);
+
+    logger.info("Received response from BL:");
+    logger.info(blResponseString);
+
+    // If we don't have a response type we can't proceed
+    String type = bldssRequest.getReqType();
+    if (type == null) {
+      return null;
+    }
+
+    String customerReference = bldssRequest.getLocalReqId();
+    String orderline = bldssRequest.getSupplierReqId();
+    String timestamp = bldssResponse.getTimestamp();
+
+    SupplyingAgencyMessageHeader header = buildMessageHeader(
+      SUPPLYING_AGENCY_ID,
+      REQUESTING_AGENCY_ID,
+      customerReference,
+      orderline,
+      timestamp
+    );
+
+    // MessageInfo
+    String status = bldssResponse.getStatus();
+
+    SupplyingAgencyMessageInfo.AnswerYesNo answerYesNo = status.equals("0") ?
+      SupplyingAgencyMessageInfo.AnswerYesNo.Y :
+      SupplyingAgencyMessageInfo.AnswerYesNo.N;
+
+    // Note should comprise the BL response's <message> element +
+    // anything in the BL response's <note> element + the raw response string.
+    // We provide it in a JSON object to allow parsing at the other end
+    JsonObject note = new JsonObject();
+    note.put("blMessage", bldssResponse.getMessage());
+    note.put("responseString", blResponseString);
+
+    SupplyingAgencyMessageInfo messageInfo = new SupplyingAgencyMessageInfo()
+      .withReasonForMessage(this.reasonForMessageMap.get(type))
+      .withAnswerYesNo(answerYesNo)
+      .withNote(note.toString());
+
+    // StatusInfo
+    SamStatusInfo statusInfo = new SamStatusInfo()
+      .withStatus(this.statusMap.get(status))
       .withLastChange(timestamp);
 
     return new SupplyingAgencyMessage()
@@ -340,6 +397,7 @@ public class SupplyingAgency {
   private Map<String, SupplyingAgencyMessageInfo.ReasonForMessage> bldssCodeToReasonForMessage() {
     return new HashMap<String, SupplyingAgencyMessageInfo.ReasonForMessage>() {{
       put("newOrder", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
+      put("cancel", SupplyingAgencyMessageInfo.ReasonForMessage.CANCEL_RESPONSE);
       put("1", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
       put("10", SupplyingAgencyMessageInfo.ReasonForMessage.REQUEST_RESPONSE);
       put("11", SupplyingAgencyMessageInfo.ReasonForMessage.NOTIFICATION);
@@ -467,6 +525,8 @@ public class SupplyingAgency {
       put("111", SamStatusInfo.Status.UNFILLED);
       put("112", SamStatusInfo.Status.RETRY_POSSIBLE);
       put("113", SamStatusInfo.Status.RETRY_POSSIBLE);
+      put("161", SamStatusInfo.Status.REQUEST_RECEIVED);
+      put("162", SamStatusInfo.Status.REQUEST_RECEIVED);
       put("700", SamStatusInfo.Status.RETRY_POSSIBLE);
       put("701", SamStatusInfo.Status.RETRY_POSSIBLE);
       put("702", SamStatusInfo.Status.RETRY_POSSIBLE);

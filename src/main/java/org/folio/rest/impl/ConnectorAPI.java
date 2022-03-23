@@ -86,7 +86,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
       // - Submit the request
       // - Return a confirmation
       // - Send a SupplyingAgency Message to the RA containing the BL response
-      illActionService.performAction(action, payload, vertxContext, okapiHeaders)
+      illActionService.performOrderAction(payload, vertxContext, okapiHeaders)
         .thenAccept(acceptResult -> {
           String responseString = acceptResult.getActionResponseString();
           ActionResponse actionResponse = acceptResult.getActionResponse();
@@ -95,7 +95,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
           asyncResultHandler.handle(succeededFuture(buildOkResponse(actionResponse)));
           // Construct and send a SupplyingAgency Message
           SupplyingAgency supplyingAgency = new SupplyingAgency();
-          SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildMessageFromBLResponse(
+          SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildOrderMessageFromBLResponse(
             responseString,
             bldssRequest
           );
@@ -111,6 +111,34 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
 
         })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
+    } else if (action.equals("cancel")) {
+      illActionService.performCancelAction(payload, vertxContext, okapiHeaders)
+        .thenAccept(acceptResult -> {
+          String responseString = acceptResult.getActionResponseString();
+          ActionResponse actionResponse = acceptResult.getActionResponse();
+          BLDSSCancelRequest bldssRequest = (BLDSSCancelRequest) acceptResult.getBldssRequest();
+
+          // Send the response
+          asyncResultHandler.handle(succeededFuture(buildOkResponse(actionResponse)));
+          // Construct and send a SupplyingAgency Message
+          SupplyingAgency supplyingAgency = new SupplyingAgency();
+          SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildCancelMessageFromBLResponse(
+            responseString,
+            bldssRequest
+          );
+
+          // Only proceed if we have a message to send
+          if (supplyingAgencyMessage != null) {
+            HttpRequest.Builder raRequest = RAUtils.buildRequestForSa(
+              okapiHeaders,
+              supplyingAgencyMessage
+            );
+            RAUtils.sendRequestToRa(raRequest, okapiHeaders);
+          }
+
+        })
+        .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
+
     }
   }
 

@@ -11,6 +11,7 @@ import static org.folio.config.Constants.BLDSS_TEST_API_URL;
 
 public class BLDSSRequest {
 
+  public final String type;
   public final String httpMethod;
   public final String path;
   public final HashMap<String, String> parameters;
@@ -18,7 +19,8 @@ public class BLDSSRequest {
   public String reqPayload;
   public URI uri;
 
-  public BLDSSRequest(String httpMethod, String path, HashMap<String, String> parameters, Boolean needsAuth) {
+  public BLDSSRequest(String type, String httpMethod, String path, HashMap<String, String> parameters, Boolean needsAuth) {
+    this.type = type;
     this.httpMethod = httpMethod;
     this.path = "/api" + path;
     this.parameters = parameters;
@@ -62,6 +64,10 @@ public class BLDSSRequest {
       });
 
     return future;
+  }
+
+  public String getReqType() {
+    return this.type;
   }
 
   public void setReqPayload(String reqPayload) {

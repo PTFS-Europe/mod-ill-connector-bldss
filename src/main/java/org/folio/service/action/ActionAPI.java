@@ -1,6 +1,7 @@
 package org.folio.service.action;
 
 import io.vertx.core.Context;
+import io.vertx.core.json.JsonObject;
 import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ConfirmationHeader;
 import org.folio.util.*;
@@ -21,11 +22,40 @@ public class ActionAPI implements ActionService {
   // a BLDSSActionResponse object
   // We do this because we may need to initiate a side-effect API call that
   // requires properties from the original request and the response
-  public CompletableFuture<BLDSSActionResponse> performAction(String actionName, String payload, Context context, Map<String, String> headers) {
+  public CompletableFuture<BLDSSActionResponse> performOrderAction(String payload, Context context, Map<String, String> headers) {
     String path =  "/orders";
     HashMap<String, String> params = new HashMap<>();
     CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
     BLDSSOrderRequest req = new BLDSSOrderRequest("POST", path, params, true, payload, headers);
+    req.makeRequest().thenApply(respObj -> {
+      BLDSSActionResponse actionResponse = new BLDSSActionResponse(
+        respObj.body(),
+        prepareResponse(respObj, req),
+        req
+      );
+      future.complete(actionResponse);
+      return actionResponse;
+    });
+    // We received a "result" element in the response, we use that to send a
+    // message containing the request result
+    return future;
+  }
+
+  @Override
+  // Perform the action and return a CompletableAction that completes to
+  // a BLDSSActionResponse object
+  public CompletableFuture<BLDSSActionResponse> performCancelAction(String payload, Context context, Map<String, String> headers) {
+    JsonObject jsonPayload = new JsonObject(payload);
+    String supplierRequestId= jsonPayload.getString("supplierRequestId");
+    String requesterRequestId = jsonPayload.getString("localRequestId");
+    CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
+    // The ID of the object we're interacting with needs to be supplied with an
+    // "id" key so it can form part of the auth parameter string,
+    // see the note in "Parameter String Generation" here:
+    // https://apitest.bldss.bl.uk/docs/guide/authentication.html#authorisationTesting
+    HashMap<String, String> params = new HashMap<>();
+    params.put("id", supplierRequestId);
+    BLDSSCancelRequest req = new BLDSSCancelRequest(supplierRequestId, requesterRequestId, params);
     req.makeRequest().thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),

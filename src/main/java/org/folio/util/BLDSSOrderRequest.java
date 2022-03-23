@@ -25,7 +25,7 @@ public class BLDSSOrderRequest extends BLDSSRequest {
 
 
   public BLDSSOrderRequest(String httpMethod, String path, HashMap<String, String> parameters, Boolean needsAuth, String payload, Map<String, String> okapiHeaders) {
-    super(httpMethod, path, parameters, needsAuth);
+    super("order", httpMethod, path, parameters, needsAuth);
     String reqPayload = this.preparePayload(payload, okapiHeaders);
     this.setReqPayload(reqPayload);
   }

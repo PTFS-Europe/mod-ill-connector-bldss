@@ -28,6 +28,7 @@ public final class RAUtils {
     HttpRequest.Builder request,
     Map<String, String> headers
   ) {
+    logger.info("BLDSS connector sending message");
     HttpClient client = HttpClient.newBuilder()
       .build();
 
@@ -51,7 +52,7 @@ public final class RAUtils {
   ) {
     OkapiParams okapiParams = new OkapiParams(okapiHeaders);
 
-    logger.info("BLDSS connector sending message:");
+    logger.info("BLDSS connector building message:");
     logger.info(JsonObject.mapFrom(supplyingAgencyMessage).toString());
 
     return HttpRequest.newBuilder()
