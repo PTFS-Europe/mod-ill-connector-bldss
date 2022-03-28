@@ -3,7 +3,10 @@ package org.folio.util;
 import io.vertx.core.json.JsonObject;
 import org.folio.common.OkapiParams;
 import org.folio.rest.jaxrs.model.BibliographicInfo;
+import org.folio.rest.jaxrs.model.Config;
 import org.folio.rest.jaxrs.model.PublicationInfo;
+import org.folio.service.configuration.ConfigurationService;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -14,6 +17,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.folio.config.Constants.CALLBACK_UUID;
 import static org.folio.config.Constants.OUR_BASE_API;
 
 public class BLDSSOrderRequest extends BLDSSRequest {
@@ -24,10 +28,8 @@ public class BLDSSOrderRequest extends BLDSSRequest {
   private PublicationInfo submissionPubInfo;
 
 
-  public BLDSSOrderRequest(String httpMethod, String path, HashMap<String, String> parameters, Boolean needsAuth, String payload, Map<String, String> okapiHeaders) {
+  public BLDSSOrderRequest(String httpMethod, String path, HashMap<String, String> parameters, Boolean needsAuth) {
     super("order", httpMethod, path, parameters, needsAuth);
-    String reqPayload = this.preparePayload(payload, okapiHeaders);
-    this.setReqPayload(reqPayload);
   }
 
   public String preparePayload(String payload, Map<String, String> okapiHeaders) {
@@ -63,9 +65,8 @@ public class BLDSSOrderRequest extends BLDSSRequest {
 
     // Top level elements
     addValueToEl(doc, "S", "type", rootEl);
-    addValueToEl(doc, "true", "payCopyright", rootEl);
     addValueToEl(doc, localRequestId, "customerReference", rootEl);
-    addValueToEl(doc, okapiParams.getUrl() + OUR_BASE_API + "/6839f2bf-5c47-469c-a80b-29765eaa9417/sa-update", "callbackUrl", rootEl);
+    addValueToEl(doc, okapiParams.getUrl() + OUR_BASE_API + "/" + CALLBACK_UUID + "/sa-update", "callbackUrl", rootEl);
 
     // Service
     JsonObject services = requestMetadata.getJsonObject("services");
@@ -188,9 +189,16 @@ public class BLDSSOrderRequest extends BLDSSRequest {
       item.appendChild(itemOfInterestLevel);
     }
 
+    // We need to get the libraryPrivilege and outsideUk settings from the config
+    String libPriv = getLibraryPrivilege(doc, okapiHeaders);
+    addValueToEl(doc, libPriv, "LibraryPrivilege", rootEl);
     rootEl.appendChild(item);
-
+    Boolean outsideUk = getIsOutsideUk(okapiHeaders);
+    if (outsideUk) {
+      addValueToEl(doc, "true", "payCopyright", rootEl);
+    }
     XMLUtil xmlUtil = new XMLUtil();
+    System.out.println(xmlUtil.docAsString(doc, false));
     return xmlUtil.docAsString(doc, false);
   }
 
@@ -222,13 +230,18 @@ public class BLDSSOrderRequest extends BLDSSRequest {
 
   // For more on Library Privilege, see here:
   // https://support.talis.com/hc/en-us/articles/205864591-British-Library-integration-functional-overview
-  // TODO: Should be derived from the module config
-  // For now, we just omit it entirely
-  /*
-  private Node getLibraryPrivilege(Document doc) {
-    Element libraryPrivilege = doc.createElement("LibraryPrivilege");
-    libraryPrivilege.setTextContent("0");
-    return libraryPrivilege;
+  private String getLibraryPrivilege(Document doc, Map<String, String> okapiHeaders) {
+    ConfigurationService configurationService = new ConfigurationService();
+    Config config = configurationService.getConfigurationEntry("generalSettings", okapiHeaders, "UI-PLUGIN-ILL-CONNECTOR-BLDSS");
+    JSONObject jsonObject = new JSONObject(config.getValue());
+    boolean libPriv = jsonObject.getBoolean("libraryPrivilege");
+    return libPriv ? "1" : "0";
   }
-  */
+
+  private Boolean getIsOutsideUk(Map<String, String> okapiHeaders) {
+    ConfigurationService configurationService = new ConfigurationService();
+    Config config = configurationService.getConfigurationEntry("generalSettings", okapiHeaders, "UI-PLUGIN-ILL-CONNECTOR-BLDSS");
+    JSONObject jsonObject = new JSONObject(config.getValue());
+    return jsonObject.getBoolean("outsideUk");
+  }
 }

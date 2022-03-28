@@ -26,8 +26,10 @@ public class ActionAPI implements ActionService {
     String path =  "/orders";
     HashMap<String, String> params = new HashMap<>();
     CompletableFuture<BLDSSActionResponse> future = new CompletableFuture<>();
-    BLDSSOrderRequest req = new BLDSSOrderRequest("POST", path, params, true, payload, headers);
-    req.makeRequest().thenApply(respObj -> {
+    BLDSSOrderRequest req = new BLDSSOrderRequest("POST", path, params, true);
+    String payloadStr = req.preparePayload(payload, headers);
+    req.setReqPayload(payloadStr);
+    req.makeRequest(headers).thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),
         prepareResponse(respObj, req),
@@ -56,7 +58,7 @@ public class ActionAPI implements ActionService {
     HashMap<String, String> params = new HashMap<>();
     params.put("id", supplierRequestId);
     BLDSSCancelRequest req = new BLDSSCancelRequest(supplierRequestId, requesterRequestId, params);
-    req.makeRequest().thenApply(respObj -> {
+    req.makeRequest(headers).thenApply(respObj -> {
       BLDSSActionResponse actionResponse = new BLDSSActionResponse(
         respObj.body(),
         prepareResponse(respObj, req),

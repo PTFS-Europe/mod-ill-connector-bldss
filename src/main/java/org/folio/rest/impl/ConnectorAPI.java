@@ -11,6 +11,7 @@ import org.folio.rest.jaxrs.model.ActionResponse;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
 import org.folio.rest.jaxrs.resource.IllConnector;
 import org.folio.service.action.ActionService;
+import org.folio.service.configuration.ConfigurationService;
 import org.folio.service.getter.GetterService;
 import org.folio.service.search.SearchService;
 import org.folio.spring.SpringContextUtil;
@@ -38,6 +39,8 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   private ActionService illActionService;
   @Autowired
   private GetterService illGetterService;
+  @Autowired
+  private ConfigurationService illConfigService;
 
   public ConnectorAPI() {
     SpringContextUtil.autowireDependencies(this, Vertx.currentContext());
@@ -47,7 +50,7 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
   // Receive a string representing the resource we want to get from the supplier,
   // then get it
   public void getIllConnectorGetterByToGet(String toGet, Map<String, String> okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    illGetterService.getFromConnector(toGet)
+    illGetterService.getFromConnector(toGet, okapiHeaders)
       .thenAccept(results -> asyncResultHandler.handle(succeededFuture(buildOkResponse(results))))
       .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
   }
@@ -97,9 +100,9 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
           SupplyingAgency supplyingAgency = new SupplyingAgency();
           SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildOrderMessageFromBLResponse(
             responseString,
-            bldssRequest
+            bldssRequest,
+            okapiHeaders
           );
-
           // Only proceed if we have a message to send
           if (supplyingAgencyMessage != null) {
             HttpRequest.Builder raRequest = RAUtils.buildRequestForSa(
@@ -108,7 +111,6 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
             );
             RAUtils.sendRequestToRa(raRequest, okapiHeaders);
           }
-
         })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
     } else if (action.equals("cancel")) {
@@ -124,9 +126,9 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
           SupplyingAgency supplyingAgency = new SupplyingAgency();
           SupplyingAgencyMessage supplyingAgencyMessage = supplyingAgency.buildCancelMessageFromBLResponse(
             responseString,
-            bldssRequest
+            bldssRequest,
+            okapiHeaders
           );
-
           // Only proceed if we have a message to send
           if (supplyingAgencyMessage != null) {
             HttpRequest.Builder raRequest = RAUtils.buildRequestForSa(
@@ -135,10 +137,8 @@ public class ConnectorAPI extends BaseApi implements IllConnector {
             );
             RAUtils.sendRequestToRa(raRequest, okapiHeaders);
           }
-
         })
         .exceptionally(t -> handleErrorResponse(asyncResultHandler, t));
-
     }
   }
 

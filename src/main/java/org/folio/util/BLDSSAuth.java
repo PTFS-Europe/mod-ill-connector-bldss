@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import org.apache.commons.lang.RandomStringUtils;
+import org.json.JSONObject;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -29,11 +30,11 @@ public class BLDSSAuth {
 
   private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
 
-  public BLDSSAuth(String httpMethod, String path, HashMap<String, String> requestParameters, String payload) {
-    this.api_application = "BLAPI8IJdN";
-    this.api_application_auth = "m7eZz1CCu7";
-    this.api_key = "73-0013";
-    this.api_key_auth = "API1394039";
+  public BLDSSAuth(String httpMethod, String path, HashMap<String, String> requestParameters, String payload, JSONObject conf) {
+    this.api_application = conf.getString("apiApplication");
+    this.api_application_auth = conf.getString("apiApplicationAuth");
+    this.api_key = conf.getString("apiKey");
+    this.api_key_auth = conf.getString("apiKeyAuth");
     this.request_time = String.valueOf(System.currentTimeMillis());
     this.nonce = this.getNonce();
     this.signature_method = "HMAC-SHA1";

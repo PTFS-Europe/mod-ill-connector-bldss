@@ -2,6 +2,7 @@ package org.folio.config;
 
 import org.folio.service.action.ActionAPI;
 import org.folio.service.action.ActionService;
+import org.folio.service.configuration.ConfigurationService;
 import org.folio.service.getter.ConnectorGetter;
 import org.folio.service.getter.GetterService;
 import org.folio.service.search.SearchAPI;
@@ -22,5 +23,9 @@ public class ApplicationConfig {
   @Bean
   public GetterService illGetterService() {
     return new ConnectorGetter();
+  }
+  @Bean
+  public ConfigurationService illConfigService() {
+    return new ConfigurationService();
   }
 }

@@ -3,13 +3,12 @@ package org.folio.util;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.rest.jaxrs.model.AgencyId;
-import org.folio.rest.jaxrs.model.Costs;
+import org.folio.rest.jaxrs.model.*;
 import org.folio.rest.jaxrs.model.ISO18626.SamDeliveryInfo;
 import org.folio.rest.jaxrs.model.ISO18626.SamStatusInfo;
 import org.folio.rest.jaxrs.model.ISO18626.SupplyingAgencyMessage;
-import org.folio.rest.jaxrs.model.SupplyingAgencyMessageHeader;
-import org.folio.rest.jaxrs.model.SupplyingAgencyMessageInfo;
+import org.folio.service.configuration.ConfigurationService;
+import org.json.JSONObject;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -19,8 +18,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
-import static org.folio.config.Constants.*;
+import static org.folio.config.Constants.ISO18626_DATE_FORMAT;
+import static org.folio.config.Constants.SUPPLYING_AGENCY_ID;
 
 public class SupplyingAgency {
 
@@ -103,7 +104,8 @@ public class SupplyingAgency {
 
   public SupplyingAgencyMessage buildOrderMessageFromBLResponse(
     String blResponseString,
-    BLDSSRequest bldssRequest
+    BLDSSRequest bldssRequest,
+    Map<String, String> okapiHeaders
   ) {
     BLDSSResponse bldssResponse = new BLDSSResponse(blResponseString);
 
@@ -118,14 +120,6 @@ public class SupplyingAgency {
     String customerReference = bldssResponse.getCustomerReference();
     String orderline = bldssResponse.getOrderline();
     String timestamp = bldssResponse.getTimestamp();
-
-    SupplyingAgencyMessageHeader header = buildMessageHeader(
-      SUPPLYING_AGENCY_ID,
-      REQUESTING_AGENCY_ID,
-      customerReference,
-      orderline,
-      timestamp
-    );
 
     // MessageInfo
     String type = bldssResponse.getResponseType();
@@ -165,15 +159,25 @@ public class SupplyingAgency {
       .withExpectedDeliveryDate(DateTimeUtils.bldssRequestResponseToIso(bldssResponse.getEstimatedDespatchDate()))
       .withLastChange(timestamp);
 
+    // Get the agency ID from the config and substitute it into the message
+    AgencyId agency = getRequestingAgency(okapiHeaders);
+    SupplyingAgencyMessageHeader header = buildMessageHeader(
+      SUPPLYING_AGENCY_ID,
+      agency,
+      customerReference,
+      orderline,
+      timestamp
+    );
     return new SupplyingAgencyMessage()
-      .withHeader(header)
-      .withMessageInfo(messageInfo)
-      .withStatusInfo(statusInfo);
+        .withHeader(header)
+        .withMessageInfo(messageInfo)
+        .withStatusInfo(statusInfo);
   }
 
   public SupplyingAgencyMessage buildCancelMessageFromBLResponse(
     String blResponseString,
-    BLDSSCancelRequest bldssRequest
+    BLDSSCancelRequest bldssRequest,
+    Map<String, String> okapiHeaders
   ) {
     BLDSSResponse bldssResponse = new BLDSSResponse(blResponseString);
 
@@ -189,14 +193,6 @@ public class SupplyingAgency {
     String customerReference = bldssRequest.getLocalReqId();
     String orderline = bldssRequest.getSupplierReqId();
     String timestamp = bldssResponse.getTimestamp();
-
-    SupplyingAgencyMessageHeader header = buildMessageHeader(
-      SUPPLYING_AGENCY_ID,
-      REQUESTING_AGENCY_ID,
-      customerReference,
-      orderline,
-      timestamp
-    );
 
     // MessageInfo
     String status = bldssResponse.getStatus();
@@ -222,10 +218,21 @@ public class SupplyingAgency {
       .withStatus(this.statusMap.get(status))
       .withLastChange(timestamp);
 
+    // Get the agency ID from the config and substitute it into the message
+    CompletableFuture<SupplyingAgencyMessage> future = new CompletableFuture<>();
+    AgencyId agency = getRequestingAgency(okapiHeaders);
+    SupplyingAgencyMessageHeader header = buildMessageHeader(
+      SUPPLYING_AGENCY_ID,
+      agency,
+      customerReference,
+      orderline,
+      timestamp
+    );
+
     return new SupplyingAgencyMessage()
-      .withHeader(header)
-      .withMessageInfo(messageInfo)
-      .withStatusInfo(statusInfo);
+        .withHeader(header)
+        .withMessageInfo(messageInfo)
+        .withStatusInfo(statusInfo);
   }
 
   private SupplyingAgencyMessageHeader buildMessageHeader(
@@ -333,6 +340,17 @@ public class SupplyingAgency {
       e.printStackTrace();
     }
     return null;
+  }
+
+  public AgencyId getRequestingAgency(Map<String, String> okapiHeaders) {
+    CompletableFuture<AgencyId> future = new CompletableFuture<>();
+    ConfigurationService configurationService = new ConfigurationService();
+    Config config = configurationService.getConfigurationEntry("generalSettings", okapiHeaders, "UI-ILL-RA");
+    JSONObject conf = new JSONObject(config.getValue());
+    AgencyId.AgencyIdType agencyIdType = AgencyId.AgencyIdType.valueOf(conf.getString("requestingAgencyIdType"));
+    return new AgencyId()
+      .withAgencyIdType(agencyIdType)
+      .withAgencyIdValue(conf.getString("requestingAgencyIdValue"));
   }
 
   private Map<String, SupplyingAgencyMessageInfo.AnswerYesNo> bldssStatusToAnswerYesNoMap() {

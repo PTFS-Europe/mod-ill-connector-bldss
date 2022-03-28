@@ -1,13 +1,16 @@
 package org.folio.util;
 
+import org.folio.rest.jaxrs.model.Config;
+import org.folio.service.configuration.ConfigurationService;
+import org.json.JSONObject;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-
-import static org.folio.config.Constants.BLDSS_TEST_API_URL;
 
 public class BLDSSRequest {
 
@@ -25,21 +28,13 @@ public class BLDSSRequest {
     this.path = "/api" + path;
     this.parameters = parameters;
     this.needsAuth = needsAuth;
-    this.uri = URI.create(BLDSS_TEST_API_URL + this.path);
   }
 
-  public CompletableFuture<HttpResponse<String>> makeRequest() {
+  public CompletableFuture<HttpResponse<String>> makeRequest(Map<String, String> headers) {
     CompletableFuture<HttpResponse<String>> future = new CompletableFuture<>();
     HttpClient client = HttpClient.newHttpClient();
     HttpRequest.Builder builder = HttpRequest.newBuilder()
-      .uri(this.uri)
       .header("Content-type", "application/xml");
-
-    if (this.needsAuth) {
-      BLDSSAuth auth = new BLDSSAuth(this.httpMethod, this.path, this.parameters, this.reqPayload);
-      String authHeader = auth.getHeaderString();
-      builder.header("BLDSS-API-Authentication", authHeader);
-    }
 
     switch(this.httpMethod) {
       case "GET":
@@ -55,15 +50,23 @@ public class BLDSSRequest {
         builder.DELETE();
         break;
     }
+    ConfigurationService configurationService = new ConfigurationService();
+    Config config = configurationService.getConfigurationEntry("apiSettings", headers, "UI-PLUGIN-ILL-CONNECTOR-BLDSS");
+    JSONObject conf = new JSONObject(config.getValue());
 
+    if (this.needsAuth) {
+      BLDSSAuth auth = new BLDSSAuth(this.httpMethod, this.path, this.parameters, this.reqPayload, conf);
+      String authHeader = auth.getHeaderString();
+      builder.header("BLDSS-API-Authentication", authHeader);
+    }
+
+    builder.uri(URI.create(conf.getString("apiUrl") + this.path));
     HttpRequest request = builder.build();
-    client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+    return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
       .thenApply(apiResponse -> {
         future.complete(apiResponse);
         return apiResponse;
       });
-
-    return future;
   }
 
   public String getReqType() {
